@@ -4,11 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автоматизированный Протокол Наблюдений</title>
+    <title>Автоматизированный Протокол Наблюдений v2.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Подключаем Chart.js для графиков -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Подключаем Flatpickr для стилизации даты/времени -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -33,66 +38,58 @@
 
         /* Стили для сворачиваемого дашборда */
         #dashboard-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
-            padding-top: 0;
-            padding-bottom: 0;
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.5s ease-in-out;
         }
-
+        #dashboard-content > div {
+            overflow: hidden;
+        }
         #dashboard-content.open {
-            max-height: 500px; /* Достаточно большое значение */
-            padding-top: 1rem;
-            padding-bottom: 1rem;
+            grid-template-rows: 1fr;
         }
 
         /* Стили для иконки-шеврона */
-        .chevron { transition: transform 0.3s ease-in-out; }
+        .chevron { transition: transform 0.4s ease-in-out; }
         .chevron.rotated { transform: rotate(180deg); }
+        
+        /* Стилизация инпута даты через Flatpickr */
+        .flatpickr-calendar {
+            background-color: #1F2937; /* bg-gray-800 */
+            border-color: #374151; /* border-gray-700 */
+        }
+        .flatpickr-day.selected {
+            background: #2563EB; /* bg-blue-600 */
+            border-color: #2563EB;
+        }
+        .flatpickr-day:hover {
+             background: #374151; /* bg-gray-700 */
+        }
+        .flatpickr-time input.flatpickr-hour, .flatpickr-time input.flatpickr-minute {
+            color: #E5E7EB;
+        }
+        span.flatpickr-weekday, .numInput, .numInputWrapper span {
+             color: #9CA3AF; /* text-gray-400 */
+        }
+        .flatpickr-day {
+             color: #D1D5DB; /* text-gray-300 */
+        }
+        .flatpickr-month, .flatpickr-current-month {
+             color: #F9FAFB; /* text-gray-50 */
+        }
     </style>
 </head>
 
 <body class="antialiased">
-    <!-- Экран входа -->
-    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-900">
-        <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-2xl shadow-lg">
-            <div>
-                <h2 class="text-2xl font-bold text-center text-white">Вход в систему</h2>
-                <p class="mt-2 text-sm text-center text-gray-400">Требуется авторизация администратора</p>
-            </div>
-            <form id="login-form" class="space-y-6">
-                <div>
-                    <label for="email" class="text-sm font-medium text-gray-300">E-mail</label>
-                    <input id="email" name="email" type="email" autocomplete="email" required class="w-full px-3 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="admin@example.com">
-                </div>
-                <div>
-                    <label for="password" class="text-sm font-medium text-gray-300">Пароль</label>
-                    <input id="password" name="password" type="password" autocomplete="current-password" required class="w-full px-3 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
-                </div>
-                <div>
-                    <button type="submit" class="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:bg-blue-800 disabled:cursor-not-allowed">
-                        Войти
-                    </button>
-                </div>
-                <p id="login-error" class="text-sm text-center text-red-400 h-4"></p>
-            </form>
-        </div>
-    </div>
-
-    <!-- Основное приложение (изначально скрыто) -->
-    <div id="app" class="min-h-screen p-4 sm:p-6 lg:p-8 hidden">
+    <!-- Основное приложение -->
+    <div id="app" class="min-h-screen p-4 sm:p-6 lg:p-8">
         <div class="max-w-7xl mx-auto">
             <!-- Заголовок -->
-            <header class="mb-6 flex justify-between items-start">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-100 tracking-tight">Автоматизированный Протокол Наблюдений</h1>
-                    <p class="text-sm text-gray-400 mt-1">
-                        Система фиксации и анализа активности субъекта. User ID: <span id="userId" class="font-mono">...</span>
-                    </p>
-                </div>
-                <button id="sign-out-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
-                    Выход
-                </button>
+            <header class="mb-6">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-100 tracking-tight">Автоматизированный Протокол Наблюдений</h1>
+                <p class="text-sm text-gray-400 mt-1">
+                    Система фиксации и анализа активности субъекта. User ID: <span id="userId" class="font-mono">...</span>
+                </p>
             </header>
             
             <!-- Дашборд -->
@@ -103,22 +100,38 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
-                <div id="dashboard-content" class="px-4">
-                    <div class="max-w-xs mx-auto">
-                         <canvas id="statusChart"></canvas>
+                <div id="dashboard-content">
+                    <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div class="max-w-xs mx-auto w-full">
+                             <canvas id="statusChart"></canvas>
+                        </div>
+                        <div class="w-full">
+                            <canvas id="activityChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Панель управления -->
+            <div class="mb-4 flex flex-col gap-4 p-4 bg-gray-900 rounded-xl shadow-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="search" id="search-input" placeholder="Поиск по протоколу..." class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div id="status-filter-container" class="flex flex-wrap gap-2 items-center">
+                        <span class="text-sm font-medium text-gray-400 mr-2">Статус:</span>
+                    </div>
+                </div>
+                <div id="tag-filter-container" class="flex flex-wrap gap-2 items-center border-t border-gray-700 pt-4">
+                     <span class="text-sm font-medium text-gray-400 mr-2">Теги:</span>
+                </div>
+            </div>
+
             <div class="mb-4 flex flex-wrap gap-2 justify-between items-center">
                  <button id="add-record-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">
                     + Добавить запись
                 </button>
                 <div class="flex gap-2">
-                    <button id="export-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">
-                        Экспорт в файл
-                    </button>
+                    <button id="report-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">Создать отчет</button>
+                    <button id="export-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">Экспорт в JSON</button>
                 </div>
             </div>
 
@@ -128,10 +141,10 @@
                     <table class="w-full text-sm text-left text-gray-300">
                         <thead class="text-xs text-gray-300 uppercase bg-gray-800 tracking-wider">
                             <tr>
-                                <th scope="col" class="px-6 py-3">Дата фиксации</th>
-                                <th scope="col" class="px-6 py-3">Время среза</th>
-                                <th scope="col" class="px-6 py-3">Протокол наблюдения</th>
-                                <th scope="col" class="px-6 py-3">Статус субъекта</th>
+                                <th scope="col" class="px-6 py-3">Дата / Время</th>
+                                <th scope="col" class="px-6 py-3">Протокол</th>
+                                <th scope="col" class="px-6 py-3">Статус</th>
+                                <th scope="col" class="px-6 py-3">Теги</th>
                                 <th scope="col" class="px-6 py-3 text-right">Действия</th>
                             </tr>
                         </thead>
@@ -152,16 +165,20 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="log-date" class="block text-sm font-medium text-gray-300 mb-1">Дата фиксации</label>
-                            <input type="date" id="log-date" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="log-date" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         <div>
                             <label for="log-time" class="block text-sm font-medium text-gray-300 mb-1">Время среза</label>
-                            <input type="time" id="log-time" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="log-time" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                     </div>
                     <div>
                         <label for="log-protocol" class="block text-sm font-medium text-gray-300 mb-1">Протокол наблюдения</label>
                         <textarea id="log-protocol" rows="4" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Анализ коммуникационной активности..."></textarea>
+                    </div>
+                    <div>
+                        <label for="log-tags" class="block text-sm font-medium text-gray-300 mb-1">Теги (через запятую)</label>
+                        <input type="text" id="log-tags" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="#важное, #анализ">
                     </div>
                     <div>
                         <label for="log-status" class="block text-sm font-medium text-gray-300 mb-1">Статус субъекта</label>
@@ -184,7 +201,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
@@ -200,24 +217,22 @@
         const finalFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-logbook-app';
 
-        let currentLogs = [];
+        let allLogs = [];
+        let filteredLogs = [];
         let currentUserId = null;
         let logsCollectionRef;
         let unsubscribe;
         let statusChart = null;
+        let activityChart = null;
 
         const app = initializeApp(finalFirebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        const loginScreen = document.getElementById('login-screen');
-        const appScreen = document.getElementById('app');
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        const signOutBtn = document.getElementById('sign-out-btn');
         const tableBody = document.getElementById('log-table-body');
         const userIdSpan = document.getElementById('userId');
         const exportBtn = document.getElementById('export-btn');
+        const reportBtn = document.getElementById('report-btn');
         const emptyState = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Протоколы отсутствуют.</td></tr>`;
         const modal = document.getElementById('modal');
         const modalContent = document.getElementById('modal-content');
@@ -230,18 +245,22 @@
         const logTimeInput = document.getElementById('log-time');
         const logProtocolInput = document.getElementById('log-protocol');
         const logStatusInput = document.getElementById('log-status');
+        const logTagsInput = document.getElementById('log-tags');
         const dashboardToggle = document.getElementById('dashboard-toggle');
         const dashboardContent = document.getElementById('dashboard-content');
         const chevronIcon = dashboardToggle.querySelector('.chevron');
+        const searchInput = document.getElementById('search-input');
+        const statusFilterContainer = document.getElementById('status-filter-container');
+        const tagFilterContainer = document.getElementById('tag-filter-container');
 
-        const toYYYYMMDD = (dateStr) => {
+        // Инициализация кастомных полей даты и времени
+        const datePicker = flatpickr(logDateInput, { dateFormat: "d.m.Y" });
+        const timePicker = flatpickr(logTimeInput, { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true });
+
+        const toTimestamp = (dateStr, timeStr) => {
             const [day, month, year] = dateStr.split('.');
-            return `${year}-${month}-${day}`;
-        };
-
-        const fromYYYYMMDD = (dateStr) => {
-            const [year, month, day] = dateStr.split('-');
-            return `${day}.${month}.${year}`;
+            const [hours, minutes] = (timeStr || "00:00").split(':');
+            return new Date(year, month - 1, day, hours, minutes).getTime();
         };
 
         const openModal = (log = null) => {
@@ -249,17 +268,17 @@
             if (log) {
                 modalTitle.textContent = 'Редактировать запись протокола';
                 logIdInput.value = log.id;
-                logDateInput.value = toYYYYMMDD(log.data.date);
-                logTimeInput.value = log.data.time || '';
+                datePicker.setDate(log.data.date, true, "d.m.Y");
+                timePicker.setDate(log.data.time || "00:00", true, "H:i");
                 logProtocolInput.value = log.data.protocol || '';
                 logStatusInput.value = log.data.status || 'Ожидание данных';
+                logTagsInput.value = (log.data.tags || []).join(', ');
             } else {
                 modalTitle.textContent = 'Новая запись протокола';
                 logIdInput.value = '';
-                logDateInput.value = new Date().toISOString().split('T')[0];
-                const now = new Date();
-                logTimeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                logProtocolInput.value = `Анализ коммуникационной активности.`;
+                datePicker.setDate(new Date(), true);
+                timePicker.setDate(new Date(), true);
+                logProtocolInput.placeholder = 'Анализ коммуникационной активности...';
                 logStatusInput.value = 'Ожидание данных';
             }
             modal.classList.remove('hidden');
@@ -271,79 +290,76 @@
             setTimeout(() => modal.classList.add('hidden'), 300);
         };
         
-        const getStatusBadge = (status) => {
-            let badgeClass = '';
-            switch(status) {
-                case 'Инактив': badgeClass = 'status-inactive'; break;
-                case 'Актив': badgeClass = 'status-active'; break;
-                case 'Под наблюдением': badgeClass = 'status-observation'; break;
-                default: badgeClass = 'status-pending'; break;
-            }
-            return `<span class="status-badge ${badgeClass}">${status}</span>`;
-        };
+        const getStatusBadge = (status) => `<span class="status-badge status-${status === 'Инактив' ? 'inactive' : status === 'Актив' ? 'active' : status === 'Под наблюдением' ? 'observation' : 'pending'}">${status}</span>`;
 
         const updateDashboard = (logs) => {
+            // Status Chart (Doughnut)
             const statusCounts = logs.reduce((acc, log) => {
                 const status = log.data.status || 'Неизвестно';
                 acc[status] = (acc[status] || 0) + 1;
                 return acc;
             }, {});
-
-            const chartData = {
+            const statusChartData = {
                 labels: Object.keys(statusCounts),
-                datasets: [{
-                    data: Object.values(statusCounts),
-                    backgroundColor: ['#991B1B', '#166534', '#9A3412', '#1E40AF', '#6B7280'],
-                    borderColor: '#111827',
-                    borderWidth: 2,
-                }]
+                datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#991B1B', '#166534', '#9A3412', '#1E40AF', '#6B7280'], borderColor: '#111827', borderWidth: 2 }]
             };
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            if(statusChart) statusChart.destroy();
+            statusChart = new Chart(statusCtx, { type: 'doughnut', data: statusChartData, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#E5E7EB', font: { size: 12 } } } } } });
 
-            const ctx = document.getElementById('statusChart').getContext('2d');
-            if(statusChart) {
-                statusChart.destroy();
+            // Activity Chart (Bar)
+            const last7Days = {};
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                last7Days[d.toLocaleDateString('ru-RU')] = 0;
             }
-            statusChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: '#E5E7EB',
-                                font: { size: 12 }
-                            }
-                        }
-                    }
+            logs.forEach(log => {
+                if (last7Days.hasOwnProperty(log.data.date)) {
+                    last7Days[log.data.date]++;
                 }
             });
+            const activityChartData = {
+                labels: Object.keys(last7Days),
+                datasets: [{ label: 'Записей в день', data: Object.values(last7Days), backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }]
+            };
+            const activityCtx = document.getElementById('activityChart').getContext('2d');
+            if(activityChart) activityChart.destroy();
+            activityChart = new Chart(activityCtx, { type: 'bar', data: activityChartData, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { color: '#9CA3AF', stepSize: 1 } }, x: { ticks: { color: '#9CA3AF' } } }, plugins: { legend: { display: false } } } });
         };
-
+        
+        const applyFiltersAndRender = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const activeStatus = document.querySelector('.status-filter-btn.bg-blue-600')?.dataset.status;
+            const activeTag = document.querySelector('.tag-filter-btn.bg-blue-600')?.dataset.tag;
+            
+            filteredLogs = allLogs.filter(log => {
+                const protocolMatch = !searchTerm || log.data.protocol.toLowerCase().includes(searchTerm);
+                const statusMatch = !activeStatus || log.data.status === activeStatus;
+                const tagMatch = !activeTag || (log.data.tags && log.data.tags.includes(activeTag));
+                return protocolMatch && statusMatch && tagMatch;
+            });
+            renderLogs(filteredLogs);
+        };
+        
         const renderLogs = (logs) => {
-            currentLogs = [...logs];
             updateDashboard(logs);
             if (logs.length === 0) {
                 tableBody.innerHTML = emptyState;
                 return;
             }
             tableBody.innerHTML = '';
-
-            logs.sort((a, b) => {
-                 const dateA = new Date(toYYYYMMDD(a.data.date));
-                 const dateB = new Date(toYYYYMMDD(b.data.date));
-                 return dateB - dateA;
-            });
+            logs.sort((a, b) => toTimestamp(b.data.date, b.data.time) - toTimestamp(a.data.date, a.data.time));
             
             logs.forEach(log => {
                 const tr = document.createElement('tr');
                 tr.className = "bg-gray-900 border-b border-gray-700 hover:bg-gray-800 transition-colors duration-200";
+                const tagsHtml = (log.data.tags || []).map(tag => `<span class="bg-gray-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${tag}</span>`).join('');
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-mono">${log.data.date}</td>
-                    <td class="px-6 py-4 font-mono">${log.data.time || 'N/A'}</td>
+                    <td class="px-6 py-4 font-mono whitespace-nowrap">${log.data.date}<br><span class="text-gray-400">${log.data.time || ''}</span></td>
                     <td class="px-6 py-4 whitespace-pre-wrap">${log.data.protocol || '...'}</td>
                     <td class="px-6 py-4">${getStatusBadge(log.data.status || '...')}</td>
+                    <td class="px-6 py-4">${tagsHtml || '<span class="text-gray-500">Нет</span>'}</td>
                     <td class="px-6 py-4 text-right">
                         <button data-id="${log.id}" class="edit-btn font-medium text-blue-500 hover:underline mr-3">Изм.</button>
                         <button data-id="${log.id}" class="delete-btn font-medium text-red-500 hover:underline">Удл.</button>
@@ -352,51 +368,50 @@
                 tableBody.appendChild(tr);
             });
         };
-        
-        const exportDataToFile = () => {
-            if (currentLogs.length === 0) {
-                alert("Нет данных для экспорта.");
-                return;
-            }
-            const dataStr = JSON.stringify(currentLogs, null, 2);
-            const dataBlob = new Blob([dataStr], {type: "application/json"});
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            const today = new Date();
-            const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            link.download = `logbook_backup_${dateStr}.json`;
-            link.href = url;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+
+        const updateFilterControls = (logs) => {
+            const statuses = ['Все', ...new Set(logs.map(log => log.data.status).filter(Boolean))];
+            statusFilterContainer.innerHTML = '<span class="text-sm font-medium text-gray-400 mr-2">Статус:</span>';
+            statuses.forEach(status => {
+                const btn = document.createElement('button');
+                btn.className = `status-filter-btn text-xs font-semibold px-3 py-1 rounded-full transition ${status === 'Все' ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`;
+                btn.textContent = status;
+                btn.dataset.status = status === 'Все' ? '' : status;
+                statusFilterContainer.appendChild(btn);
+            });
+
+            const allTags = [...new Set(logs.flatMap(log => log.data.tags || []))];
+            tagFilterContainer.innerHTML = '<span class="text-sm font-medium text-gray-400 mr-2">Теги:</span> <button class="tag-filter-btn text-xs font-semibold px-3 py-1 rounded-full transition bg-blue-600 text-white" data-tag="">Все</button>';
+            allTags.forEach(tag => {
+                const btn = document.createElement('button');
+                btn.className = 'tag-filter-btn text-xs font-semibold px-3 py-1 rounded-full transition bg-gray-700 hover:bg-gray-600';
+                btn.textContent = tag;
+                btn.dataset.tag = tag;
+                tagFilterContainer.appendChild(btn);
+            });
         };
 
-        const ensureTodaysEntry = (logs) => {
-            const formattedToday = new Date().toLocaleDateString('ru-RU');
-            const todayLogExists = logs.some(log => log.data.date === formattedToday);
-
-            if (!todayLogExists && logsCollectionRef) {
-                const newEntryData = {
-                    date: formattedToday, time: '', protocol: '', status: 'Ожидание данных', createdAt: new Date()
-                };
-                addDoc(logsCollectionRef, newEntryData).catch(err => console.error("Ошибка авто-добавления записи: ", err));
-            }
+        const generateReport = () => {
+             const reportWindow = window.open('', '_blank');
+             reportWindow.document.write(`
+                <html><head><title>Отчет по протоколам</title><style>body{font-family:sans-serif;margin:2rem}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}@media print{button{display:none}}</style></head>
+                <body><h1>Отчет по протоколам наблюдений</h1><p>Сгенерировано: ${new Date().toLocaleString()}</p><button onclick="window.print()">Печать</button><hr>
+                <table><thead><tr><th>Дата</th><th>Время</th><th>Протокол</th><th>Статус</th><th>Теги</th></tr></thead><tbody>
+                ${filteredLogs.map(log => `<tr><td>${log.data.date}</td><td>${log.data.time||''}</td><td>${log.data.protocol}</td><td>${log.data.status}</td><td>${(log.data.tags||[]).join(', ')}</td></tr>`).join('')}
+                </tbody></table></body></html>`);
+             reportWindow.document.close();
         };
 
         const initApp = (user) => {
             currentUserId = user.uid;
-            userIdSpan.textContent = currentUserId;
-            
+            userIdSpan.textContent = currentUserId.substring(0, 8) + '...';
             const collectionPath = `/artifacts/${appId}/users/${currentUserId}/logs`;
             logsCollectionRef = collection(db, collectionPath);
-            
-            if (unsubscribe) unsubscribe(); 
-            
+            if (unsubscribe) unsubscribe();
             unsubscribe = onSnapshot(query(logsCollectionRef), (snapshot) => {
-                const logs = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-                renderLogs(logs);
-                ensureTodaysEntry(logs);
+                allLogs = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                updateFilterControls(allLogs);
+                applyFiltersAndRender();
             }, (error) => {
                 console.error("Ошибка получения данных: ", error);
                 tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-400">Ошибка: Не удалось загрузить данные.</td></tr>`;
@@ -405,61 +420,50 @@
 
         addRecordBtn.addEventListener('click', () => openModal());
         cancelBtn.addEventListener('click', closeModal);
-        exportBtn.addEventListener('click', exportDataToFile);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
+        exportBtn.addEventListener('click', () => { /* Logic to be added */ });
+        reportBtn.addEventListener('click', generateReport);
+        modal.addEventListener('click', (e) => e.target === modal && closeModal());
         dashboardToggle.addEventListener('click', () => {
             dashboardContent.classList.toggle('open');
             chevronIcon.classList.toggle('rotated');
         });
-
-        signOutBtn.addEventListener('click', () => signOut(auth).catch(error => console.error('Sign out error', error)));
-
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = loginForm.email.value;
-            const password = loginForm.password.value;
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            loginError.textContent = '';
-            submitButton.disabled = true;
-            submitButton.textContent = 'Вход...';
-
-            signInWithEmailAndPassword(auth, email, password)
-                .catch(error => {
-                    console.error('Login error:', error.code);
-                    loginError.textContent = 'Ошибка: неверный E-mail или пароль.';
-                })
-                .finally(() => {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Войти';
-                });
+        searchInput.addEventListener('input', applyFiltersAndRender);
+        statusFilterContainer.addEventListener('click', (e) => {
+            if(e.target.classList.contains('status-filter-btn')) {
+                document.querySelectorAll('.status-filter-btn').forEach(btn => btn.classList.replace('bg-blue-600', 'bg-gray-700'));
+                e.target.classList.replace('bg-gray-700', 'bg-blue-600');
+                applyFiltersAndRender();
+            }
         });
-
+        tagFilterContainer.addEventListener('click', (e) => {
+             if(e.target.classList.contains('tag-filter-btn')) {
+                document.querySelectorAll('.tag-filter-btn').forEach(btn => btn.classList.replace('bg-blue-600', 'bg-gray-700'));
+                e.target.classList.replace('bg-gray-700', 'bg-blue-600');
+                applyFiltersAndRender();
+            }
+        });
+        
         logForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const logId = logIdInput.value;
+            const tags = logTagsInput.value.split(',').map(tag => tag.trim()).filter(Boolean);
             const logData = {
-                date: fromYYYYMMDD(logDateInput.value),
+                date: logDateInput.value,
                 time: logTimeInput.value,
                 protocol: logProtocolInput.value,
                 status: logStatusInput.value,
+                tags: tags
             };
-
             try {
                 if (logId) {
                     const docRef = doc(db, logsCollectionRef.path, logId);
                     const docSnap = await getDoc(docRef);
-                    const existingData = docSnap.exists() ? docSnap.data() : {};
-                    await setDoc(docRef, { ...existingData, ...logData });
+                    await setDoc(docRef, { ...docSnap.data(), ...logData });
                 } else {
                      logData.createdAt = new Date();
                      await addDoc(logsCollectionRef, logData);
                 }
-            } catch (error) {
-                console.error("Ошибка сохранения записи: ", error);
-                alert("Не удалось сохранить запись.");
-            }
+            } catch (error) { console.error("Ошибка сохранения записи: ", error); }
             closeModal();
         });
         
@@ -468,34 +472,23 @@
              if (!target) return;
              const logId = target.dataset.id;
              if (!logId) return;
-
              if (target.classList.contains('edit-btn')) {
                  const docRef = doc(db, logsCollectionRef.path, logId);
                  const docSnap = await getDoc(docRef);
                  if (docSnap.exists()) openModal({id: logId, data: docSnap.data()});
              } else if (target.classList.contains('delete-btn')) {
                  if (confirm('Вы уверены, что хотите удалить эту запись?')) {
-                     try {
-                        await deleteDoc(doc(db, logsCollectionRef.path, logId));
-                     } catch(error) {
-                         console.error("Ошибка удаления записи: ", error);
-                         alert("Не удалось удалить запись.");
-                     }
+                     try { await deleteDoc(doc(db, logsCollectionRef.path, logId)); } 
+                     catch(error) { console.error("Ошибка удаления записи: ", error); }
                  }
              }
         });
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                loginScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
                 initApp(user);
             } else {
-                if (unsubscribe) unsubscribe();
-                appScreen.classList.add('hidden');
-                loginScreen.classList.remove('hidden');
-                tableBody.innerHTML = '';
-                currentLogs = [];
+                signInAnonymously(auth).catch(error => console.error("Anonymous sign in failed:", error));
             }
         });
 
