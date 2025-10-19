@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автоматизированный Протокол Наблюдений v2.2</title>
+    <title>Автоматизированный Протокол Наблюдений v2.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Подключаем Chart.js для графиков -->
@@ -36,18 +36,20 @@
         .status-pending { background-color: #9A3412; color: #FFEDD5; }
         .status-observation { background-color: #1E40AF; color: #DBEAFE; }
 
-        /* Стили для сворачиваемого дашборда */
+        /* ИСПРАВЛЕННЫЕ Стили для сворачиваемого дашборда */
         #dashboard-content {
-            display: grid;
-            grid-template-rows: 0fr;
-            transition: grid-template-rows 0.5s ease-in-out;
-        }
-        #dashboard-content > div {
+            max-height: 0;
             overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding-top: 0;
+            padding-bottom: 0;
         }
         #dashboard-content.open {
-            grid-template-rows: 1fr;
+            max-height: 500px; /* Достаточно большое значение для контента */
+            padding-top: 1rem;
+            padding-bottom: 1rem;
         }
+
 
         /* Стили для иконки-шеврона */
         .chevron { transition: transform 0.4s ease-in-out; }
@@ -85,11 +87,21 @@
     <div id="app" class="min-h-screen p-4 sm:p-6 lg:p-8">
         <div class="max-w-7xl mx-auto">
             <!-- Заголовок -->
-            <header class="mb-6">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-100 tracking-tight">Автоматизированный Протокол Наблюдений</h1>
-                <p class="text-sm text-gray-400 mt-1">
-                    Система фиксации и анализа активности субъекта. User ID: <span id="userId" class="font-mono">...</span>
-                </p>
+            <header class="mb-6 flex justify-between items-start">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-100 tracking-tight">Автоматизированный Протокол Наблюдений</h1>
+                    <p id="user-status-text" class="text-sm text-gray-400 mt-1">
+                        Загрузка данных...
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="login-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
+                        Вход
+                    </button>
+                     <button id="logout-btn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
+                        Выход
+                    </button>
+                </div>
             </header>
             
             <!-- Дашборд -->
@@ -155,7 +167,7 @@
         </div>
     </div>
     
-    <!-- Модальное окно -->
+    <!-- Модальное окно записи -->
     <div id="modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg p-6 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
             <h2 id="modal-title" class="text-xl font-bold mb-4">Новая запись протокола</h2>
@@ -198,10 +210,29 @@
         </div>
     </div>
 
+    <!-- Модальное окно входа -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-8 transform transition-all duration-300 scale-95 opacity-0" id="login-modal-content">
+            <h2 class="text-2xl font-bold text-center text-white">Вход в систему</h2>
+            <p class="mt-2 text-sm text-center text-gray-400 mb-6">Введите данные для доступа</p>
+            <form id="login-form">
+                <div class="space-y-4">
+                    <input id="email" type="email" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="E-mail">
+                    <input id="password" type="password" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Пароль">
+                </div>
+                 <p id="login-error" class="text-sm text-center text-red-400 h-4 mt-2"></p>
+                <div class="mt-6 flex flex-col gap-3">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Войти</button>
+                    <button type="button" id="login-cancel-btn" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
@@ -217,23 +248,19 @@
         const finalFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-logbook-app';
 
-        let allLogs = [];
-        let filteredLogs = [];
-        let currentUserId = null;
-        let logsCollectionRef;
-        let unsubscribe;
-        let statusChart = null;
-        let activityChart = null;
+        let allLogs = [], filteredLogs = [], currentUserId = null, logsCollectionRef, unsubscribe;
+        let statusChart = null, activityChart = null;
 
         const app = initializeApp(finalFirebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
         const tableBody = document.getElementById('log-table-body');
-        const userIdSpan = document.getElementById('userId');
+        const userStatusText = document.getElementById('user-status-text');
         const exportBtn = document.getElementById('export-btn');
         const reportBtn = document.getElementById('report-btn');
         const emptyState = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Протоколы отсутствуют.</td></tr>`;
+        
         const modal = document.getElementById('modal');
         const modalContent = document.getElementById('modal-content');
         const modalTitle = document.getElementById('modal-title');
@@ -246,6 +273,15 @@
         const logProtocolInput = document.getElementById('log-protocol');
         const logStatusInput = document.getElementById('log-status');
         const logTagsInput = document.getElementById('log-tags');
+        
+        const loginModal = document.getElementById('login-modal');
+        const loginModalContent = document.getElementById('login-modal-content');
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loginCancelBtn = document.getElementById('login-cancel-btn');
+        const loginError = document.getElementById('login-error');
+
         const dashboardToggle = document.getElementById('dashboard-toggle');
         const dashboardContent = document.getElementById('dashboard-content');
         const chevronIcon = dashboardToggle.querySelector('.chevron');
@@ -253,7 +289,6 @@
         const statusFilterContainer = document.getElementById('status-filter-container');
         const tagFilterContainer = document.getElementById('tag-filter-container');
 
-        // Инициализация кастомных полей даты и времени
         const datePicker = flatpickr(logDateInput, { dateFormat: "d.m.Y" });
         const timePicker = flatpickr(logTimeInput, { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true });
 
@@ -265,6 +300,7 @@
 
         const openModal = (log = null) => {
             logForm.reset();
+            logProtocolInput.value = ''; // Ensure textarea is cleared
             if (log) {
                 modalTitle.textContent = 'Редактировать запись протокола';
                 logIdInput.value = log.id;
@@ -278,7 +314,6 @@
                 logIdInput.value = '';
                 datePicker.setDate(new Date(), true);
                 timePicker.setDate(new Date(), true);
-                logProtocolInput.placeholder = 'Анализ коммуникационной активности...';
                 logStatusInput.value = 'Ожидание данных';
             }
             modal.classList.remove('hidden');
@@ -289,84 +324,54 @@
             modalContent.classList.add('scale-95', 'opacity-0');
             setTimeout(() => modal.classList.add('hidden'), 300);
         };
+
+        const openLoginModal = () => {
+            loginForm.reset();
+            loginError.textContent = '';
+            loginModal.classList.remove('hidden');
+            setTimeout(() => loginModalContent.classList.remove('scale-95', 'opacity-0'), 10);
+        }
+
+        const closeLoginModal = () => {
+             loginModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => loginModal.classList.add('hidden'), 300);
+        }
         
         const getStatusBadge = (status) => `<span class="status-badge status-${status === 'Инактив' ? 'inactive' : status === 'Актив' ? 'active' : status === 'Под наблюдением' ? 'observation' : 'pending'}">${status}</span>`;
 
         const updateDashboard = (logs) => {
-            // Status Chart (Doughnut)
-            const statusCounts = logs.reduce((acc, log) => {
-                const status = log.data.status || 'Неизвестно';
-                acc[status] = (acc[status] || 0) + 1;
-                return acc;
-            }, {});
-            const statusChartData = {
-                labels: Object.keys(statusCounts),
-                datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#991B1B', '#166534', '#9A3412', '#1E40AF', '#6B7280'], borderColor: '#111827', borderWidth: 2 }]
-            };
-            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            const statusCounts = logs.reduce((acc, log) => { acc[log.data.status || 'Неизвестно'] = (acc[log.data.status || 'Неизвестно'] || 0) + 1; return acc; }, {});
             if(statusChart) statusChart.destroy();
-            statusChart = new Chart(statusCtx, { type: 'doughnut', data: statusChartData, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#E5E7EB', font: { size: 12 } } } } } });
+            statusChart = new Chart(document.getElementById('statusChart').getContext('2d'), { type: 'doughnut', data: { labels: Object.keys(statusCounts), datasets: [{ data: Object.values(statusCounts), backgroundColor: ['#991B1B', '#166534', '#9A3412', '#1E40AF', '#6B7280'], borderColor: '#111827', borderWidth: 2 }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: '#E5E7EB', font: { size: 12 } } } } } });
 
-            // Activity Chart (Bar)
             const last7Days = {};
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                last7Days[d.toLocaleDateString('ru-RU')] = 0;
-            }
-            logs.forEach(log => {
-                if (last7Days.hasOwnProperty(log.data.date)) {
-                    last7Days[log.data.date]++;
-                }
-            });
-            const activityChartData = {
-                labels: Object.keys(last7Days),
-                datasets: [{ label: 'Записей в день', data: Object.values(last7Days), backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }]
-            };
-            const activityCtx = document.getElementById('activityChart').getContext('2d');
+            for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); last7Days[d.toLocaleDateString('ru-RU')] = 0; }
+            logs.forEach(log => { if (last7Days.hasOwnProperty(log.data.date)) { last7Days[log.data.date]++; } });
             if(activityChart) activityChart.destroy();
-            activityChart = new Chart(activityCtx, { type: 'bar', data: activityChartData, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { color: '#9CA3AF', stepSize: 1 } }, x: { ticks: { color: '#9CA3AF' } } }, plugins: { legend: { display: false } } } });
+            activityChart = new Chart(document.getElementById('activityChart').getContext('2d'), { type: 'bar', data: { labels: Object.keys(last7Days), datasets: [{ label: 'Записей в день', data: Object.values(last7Days), backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }] }, options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { color: '#9CA3AF', stepSize: 1 } }, x: { ticks: { color: '#9CA3AF' } } }, plugins: { legend: { display: false } } } });
         };
         
         const applyFiltersAndRender = () => {
             const searchTerm = searchInput.value.toLowerCase();
             const activeStatus = document.querySelector('.status-filter-btn.bg-blue-600')?.dataset.status;
             const activeTag = document.querySelector('.tag-filter-btn.bg-blue-600')?.dataset.tag;
-            
-            filteredLogs = allLogs.filter(log => {
-                const protocolMatch = !searchTerm || log.data.protocol.toLowerCase().includes(searchTerm);
-                const statusMatch = !activeStatus || log.data.status === activeStatus;
-                const tagMatch = !activeTag || (log.data.tags && log.data.tags.includes(activeTag));
-                return protocolMatch && statusMatch && tagMatch;
-            });
+            filteredLogs = allLogs.filter(log => (!searchTerm || log.data.protocol.toLowerCase().includes(searchTerm)) && (!activeStatus || log.data.status === activeStatus) && (!activeTag || (log.data.tags && log.data.tags.includes(activeTag))));
             renderLogs(filteredLogs);
         };
         
         const renderLogs = (logs) => {
             updateDashboard(logs);
-            if (logs.length === 0) {
-                tableBody.innerHTML = emptyState;
-                return;
+            tableBody.innerHTML = logs.length === 0 ? emptyState : '';
+            if (logs.length > 0) {
+                logs.sort((a, b) => toTimestamp(b.data.date, b.data.time) - toTimestamp(a.data.date, a.data.time));
+                logs.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.className = "bg-gray-900 border-b border-gray-700 hover:bg-gray-800 transition-colors duration-200";
+                    const tagsHtml = (log.data.tags || []).map(tag => `<span class="bg-gray-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${tag}</span>`).join('');
+                    tr.innerHTML = `<td class="px-6 py-4 font-mono whitespace-nowrap">${log.data.date}<br><span class="text-gray-400">${log.data.time||''}</span></td><td class="px-6 py-4 whitespace-pre-wrap">${log.data.protocol||'...'}</td><td class="px-6 py-4">${getStatusBadge(log.data.status||'...')}</td><td class="px-6 py-4">${tagsHtml||'<span class="text-gray-500">Нет</span>'}</td><td class="px-6 py-4 text-right"><button data-id="${log.id}" class="edit-btn font-medium text-blue-500 hover:underline mr-3">Изм.</button><button data-id="${log.id}" class="delete-btn font-medium text-red-500 hover:underline">Удл.</button></td>`;
+                    tableBody.appendChild(tr);
+                });
             }
-            tableBody.innerHTML = '';
-            logs.sort((a, b) => toTimestamp(b.data.date, b.data.time) - toTimestamp(a.data.date, a.data.time));
-            
-            logs.forEach(log => {
-                const tr = document.createElement('tr');
-                tr.className = "bg-gray-900 border-b border-gray-700 hover:bg-gray-800 transition-colors duration-200";
-                const tagsHtml = (log.data.tags || []).map(tag => `<span class="bg-gray-700 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${tag}</span>`).join('');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 font-mono whitespace-nowrap">${log.data.date}<br><span class="text-gray-400">${log.data.time || ''}</span></td>
-                    <td class="px-6 py-4 whitespace-pre-wrap">${log.data.protocol || '...'}</td>
-                    <td class="px-6 py-4">${getStatusBadge(log.data.status || '...')}</td>
-                    <td class="px-6 py-4">${tagsHtml || '<span class="text-gray-500">Нет</span>'}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button data-id="${log.id}" class="edit-btn font-medium text-blue-500 hover:underline mr-3">Изм.</button>
-                        <button data-id="${log.id}" class="delete-btn font-medium text-red-500 hover:underline">Удл.</button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
         };
 
         const updateFilterControls = (logs) => {
@@ -379,32 +384,24 @@
                 btn.dataset.status = status === 'Все' ? '' : status;
                 statusFilterContainer.appendChild(btn);
             });
-
             const allTags = [...new Set(logs.flatMap(log => log.data.tags || []))];
             tagFilterContainer.innerHTML = '<span class="text-sm font-medium text-gray-400 mr-2">Теги:</span> <button class="tag-filter-btn text-xs font-semibold px-3 py-1 rounded-full transition bg-blue-600 text-white" data-tag="">Все</button>';
             allTags.forEach(tag => {
                 const btn = document.createElement('button');
                 btn.className = 'tag-filter-btn text-xs font-semibold px-3 py-1 rounded-full transition bg-gray-700 hover:bg-gray-600';
-                btn.textContent = tag;
-                btn.dataset.tag = tag;
+                btn.textContent = tag; btn.dataset.tag = tag;
                 tagFilterContainer.appendChild(btn);
             });
         };
 
         const generateReport = () => {
              const reportWindow = window.open('', '_blank');
-             reportWindow.document.write(`
-                <html><head><title>Отчет по протоколам</title><style>body{font-family:sans-serif;margin:2rem}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}@media print{button{display:none}}</style></head>
-                <body><h1>Отчет по протоколам наблюдений</h1><p>Сгенерировано: ${new Date().toLocaleString()}</p><button onclick="window.print()">Печать</button><hr>
-                <table><thead><tr><th>Дата</th><th>Время</th><th>Протокол</th><th>Статус</th><th>Теги</th></tr></thead><tbody>
-                ${filteredLogs.map(log => `<tr><td>${log.data.date}</td><td>${log.data.time||''}</td><td>${log.data.protocol}</td><td>${log.data.status}</td><td>${(log.data.tags||[]).join(', ')}</td></tr>`).join('')}
-                </tbody></table></body></html>`);
+             reportWindow.document.write(`<html><head><title>Отчет по протоколам</title><style>body{font-family:sans-serif;margin:2rem}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}@media print{button{display:none}}</style></head><body><h1>Отчет по протоколам наблюдений</h1><p>Сгенерировано: ${new Date().toLocaleString()}</p><button onclick="window.print()">Печать</button><hr><table><thead><tr><th>Дата</th><th>Время</th><th>Протокол</th><th>Статус</th><th>Теги</th></tr></thead><tbody>${filteredLogs.map(log=>`<tr><td>${log.data.date}</td><td>${log.data.time||''}</td><td>${log.data.protocol}</td><td>${log.data.status}</td><td>${(log.data.tags||[]).join(', ')}</td></tr>`).join('')}</tbody></table></body></html>`);
              reportWindow.document.close();
         };
 
         const initApp = (user) => {
             currentUserId = user.uid;
-            userIdSpan.textContent = currentUserId.substring(0, 8) + '...';
             const collectionPath = `/artifacts/${appId}/users/${currentUserId}/logs`;
             logsCollectionRef = collection(db, collectionPath);
             if (unsubscribe) unsubscribe();
@@ -420,13 +417,13 @@
 
         addRecordBtn.addEventListener('click', () => openModal());
         cancelBtn.addEventListener('click', closeModal);
-        exportBtn.addEventListener('click', () => { /* Logic to be added */ });
+        loginCancelBtn.addEventListener('click', closeLoginModal);
         reportBtn.addEventListener('click', generateReport);
         modal.addEventListener('click', (e) => e.target === modal && closeModal());
-        dashboardToggle.addEventListener('click', () => {
-            dashboardContent.classList.toggle('open');
-            chevronIcon.classList.toggle('rotated');
-        });
+        loginModal.addEventListener('click', (e) => e.target === loginModal && closeLoginModal());
+        loginBtn.addEventListener('click', openLoginModal);
+        logoutBtn.addEventListener('click', () => signOut(auth).catch(err => console.error(err)));
+        dashboardToggle.addEventListener('click', () => { dashboardContent.classList.toggle('open'); chevronIcon.classList.toggle('rotated'); });
         searchInput.addEventListener('input', applyFiltersAndRender);
         statusFilterContainer.addEventListener('click', (e) => {
             if(e.target.classList.contains('status-filter-btn')) {
@@ -443,17 +440,19 @@
             }
         });
         
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginError.textContent = '';
+            signInWithEmailAndPassword(auth, e.target.email.value, e.target.password.value)
+            .then(() => closeLoginModal())
+            .catch(err => { loginError.textContent = 'Ошибка входа. Проверьте данные.'; });
+        });
+
         logForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const logId = logIdInput.value;
             const tags = logTagsInput.value.split(',').map(tag => tag.trim()).filter(Boolean);
-            const logData = {
-                date: logDateInput.value,
-                time: logTimeInput.value,
-                protocol: logProtocolInput.value,
-                status: logStatusInput.value,
-                tags: tags
-            };
+            const logData = { date: logDateInput.value, time: logTimeInput.value, protocol: logProtocolInput.value, status: logStatusInput.value, tags: tags };
             try {
                 if (logId) {
                     const docRef = doc(db, logsCollectionRef.path, logId);
@@ -473,11 +472,10 @@
              const logId = target.dataset.id;
              if (!logId) return;
              if (target.classList.contains('edit-btn')) {
-                 const docRef = doc(db, logsCollectionRef.path, logId);
-                 const docSnap = await getDoc(docRef);
+                 const docSnap = await getDoc(doc(db, logsCollectionRef.path, logId));
                  if (docSnap.exists()) openModal({id: logId, data: docSnap.data()});
              } else if (target.classList.contains('delete-btn')) {
-                 if (confirm('Вы уверены, что хотите удалить эту запись?')) {
+                 if (confirm('Вы уверены?')) {
                      try { await deleteDoc(doc(db, logsCollectionRef.path, logId)); } 
                      catch(error) { console.error("Ошибка удаления записи: ", error); }
                  }
@@ -486,12 +484,20 @@
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                if (user.isAnonymous) {
+                    userStatusText.textContent = `Режим: Анонимный. User ID: ${user.uid.substring(0,8)}...`;
+                    loginBtn.classList.remove('hidden');
+                    logoutBtn.classList.add('hidden');
+                } else {
+                    userStatusText.textContent = `Вы вошли как: ${user.email}`;
+                    loginBtn.classList.add('hidden');
+                    logoutBtn.classList.remove('hidden');
+                }
                 initApp(user);
             } else {
                 signInAnonymously(auth).catch(error => console.error("Anonymous sign in failed:", error));
             }
         });
-
     </script>
 </body>
 </html>
