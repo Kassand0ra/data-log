@@ -14,7 +14,7 @@
             color: #E5E7EB;
         }
 
-        /* Костыль для скролла */
+        /* Кастомный скроллбар для Webkit-браузеров */
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -64,16 +64,47 @@
 </head>
 
 <body class="antialiased">
+    <!-- Экран входа -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-900">
+        <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-2xl shadow-lg">
+            <div>
+                <h2 class="text-2xl font-bold text-center text-white">Вход в систему</h2>
+                <p class="mt-2 text-sm text-center text-gray-400">Требуется авторизация администратора</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="email" class="text-sm font-medium text-gray-300">E-mail</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required class="w-full px-3 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="admin@example.com">
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-gray-300">Пароль</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required class="w-full px-3 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
+                </div>
+                <div>
+                    <button type="submit" class="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-800">
+                        Войти
+                    </button>
+                </div>
+                <p id="login-error" class="text-sm text-center text-red-400 h-4"></p>
+            </form>
+        </div>
+    </div>
 
-    <div id="app" class="min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <!-- Основное приложение (изначально скрыто) -->
+    <div id="app" class="min-h-screen p-4 sm:p-6 lg:p-8 hidden">
         <div class="max-w-7xl mx-auto">
             <!-- Заголовок -->
-            <header class="mb-6">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-100 tracking-tight">Автоматизированный Протокол Наблюдений</h1>
-                <p class="text-sm text-gray-400 mt-1">
-                    Система фиксации и анализа активности субъекта. User ID: <span id="userId" class="font-mono">...</span>
-                    <span id="mode-status" class="ml-4 font-semibold"></span>
-                </p>
+            <header class="mb-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-100 tracking-tight">Автоматизированный Протокол Наблюдений</h1>
+                    <p class="text-sm text-gray-400 mt-1">
+                        Система фиксации и анализа активности субъекта. User ID: <span id="userId" class="font-mono">...</span>
+                    </p>
+                </div>
+                <button id="sign-out-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">
+                    Выход
+                </button>
             </header>
 
             <!-- Панель управления -->
@@ -103,17 +134,6 @@
                         </thead>
                         <tbody id="log-table-body">
                             <!-- Загрузка данных... -->
-                            <tr>
-                                <td colspan="5" class="text-center p-8 text-gray-500">
-                                    <div id="loading-state">
-                                        <svg class="animate-spin h-6 w-6 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        Инициализация системы...
-                                    </div>
-                                    <div id="empty-state" class="hidden">
-                                        Протоколы отсутствуют. Первая запись будет создана автоматически.
-                                    </div>
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -158,42 +178,29 @@
     <script type="module">
         // Импорт модулей Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, getDoc
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ===================================================================================
-        // =================  ВАЖНО! ЧТОБЫ Я ПОТОМ НИХЕРА НЕ ЗАБЫЛ  ==========================
-        // ===================================================================================
-        // 1. Создать проект на https://firebase.google.com/
-        // 2. Настроить проект.
-        // 3. API ключ втоптать
-        //    Попить чай.
-        // 4. Настроить консоль
-        //    Грабить караваны.
-        // ===================================================================================
+        
         const firebaseConfig = {
-  apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
-  authDomain: "data-load-691c7.firebaseapp.com",
-  projectId: "data-load-691c7",
-  storageBucket: "data-load-691c7.firebasestorage.app",
-  messagingSenderId: "365958727141",
-  appId: "1:365958727141:web:cc1e0d05a061b6c0f55b0c",
-  measurementId: "G-5BB0FHGEH4"
-};
-
+            apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
+            authDomain: "data-load-691c7.firebaseapp.com",
+            projectId: "data-load-691c7",
+            storageBucket: "data-load-691c7.appspot.com",
+            messagingSenderId: "365958727141",
+            appId: "1:365958727141:web:cc1e0d05a061b6c0f55b0c",
+            measurementId: "G-5BB0FHGEH4"
+        };
         
         const finalFirebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : firebaseConfig;
             
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-logbook-app';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // --- Глобальное состояние ---
-        let isLocalMode = false;
-        let localLogs = []; // Массив для хранения логов в локальном режиме
         let currentLogs = []; // Всегда актуальная копия логов для экспорта
         let currentUserId = null;
         let logsCollectionRef;
@@ -205,13 +212,17 @@
         const db = getFirestore(app);
 
         // --- DOM элементы ---
+        const loginScreen = document.getElementById('login-screen');
+        const appScreen = document.getElementById('app');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const signOutBtn = document.getElementById('sign-out-btn');
+
         const tableBody = document.getElementById('log-table-body');
-        const loadingState = document.getElementById('loading-state').parentElement;
-        const emptyState = document.getElementById('empty-state');
         const userIdSpan = document.getElementById('userId');
-        const modeStatusSpan = document.getElementById('mode-status');
         const exportBtn = document.getElementById('export-btn');
-        
+        const emptyState = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Протоколы отсутствуют. Первая запись будет создана автоматически.</td></tr>`;
+
         const modal = document.getElementById('modal');
         const modalContent = document.getElementById('modal-content');
         const modalTitle = document.getElementById('modal-title');
@@ -269,14 +280,10 @@
 
         const renderLogs = (logs) => {
             currentLogs = [...logs]; // Сохраняем копию для экспорта
-            loadingState.classList.add('hidden');
-            
             if (logs.length === 0) {
-                emptyState.classList.remove('hidden');
-                tableBody.innerHTML = '';
+                tableBody.innerHTML = emptyState;
                 return;
             }
-            emptyState.classList.add('hidden');
             tableBody.innerHTML = '';
 
             logs.sort((a, b) => {
@@ -322,59 +329,24 @@
             URL.revokeObjectURL(url);
         };
 
-        // --- ЛОКАЛЬНЫЙ РЕЖИМ ---
-        const saveLocalLogs = () => {
-            try {
-                localStorage.setItem('logbook-logs', JSON.stringify(localLogs));
-            } catch (e) {
-                console.error("Failed to save logs to localStorage:", e);
-            }
-        };
-
-        const initLocalMode = () => {
-            isLocalMode = true;
-            modeStatusSpan.textContent = 'Локальный режим';
-            modeStatusSpan.style.color = '#FBBF24'; // Tailwind amber-400
-            userIdSpan.textContent = "local-user";
-            try {
-                const savedLogs = localStorage.getItem('logbook-logs');
-                localLogs = savedLogs ? JSON.parse(savedLogs) : [];
-            } catch (e) {
-                console.error("Error parsing local logs:", e);
-                localLogs = [];
-            }
-            renderLogs(localLogs);
-            ensureTodaysEntry(localLogs);
-        };
-
         // Автоматическое добавление записи на сегодня
         const ensureTodaysEntry = (logs) => {
             const today = new Date();
             const formattedToday = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
             const todayLogExists = logs.some(log => log.data.date === formattedToday);
 
-            if (!todayLogExists) {
+            if (!todayLogExists && logsCollectionRef) {
                 const newEntryData = {
                     date: formattedToday, time: '', protocol: '', status: 'Ожидание данных',
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date()
                 };
-                if (isLocalMode) {
-                    const newEntry = { id: crypto.randomUUID(), data: newEntryData };
-                    localLogs.push(newEntry);
-                    saveLocalLogs();
-                    renderLogs(localLogs);
-                } else if (logsCollectionRef) {
-                    addDoc(logsCollectionRef, newEntryData)
-                        .catch(err => console.error("Ошибка авто-добавления записи: ", err));
-                }
+                addDoc(logsCollectionRef, newEntryData)
+                    .catch(err => console.error("Ошибка авто-добавления записи: ", err));
             }
         };
 
-        // --- Инициализация после аутентификации (Облачный режим) ---
-        const initCloudMode = (user) => {
-            isLocalMode = false;
-            modeStatusSpan.textContent = 'Облачный режим';
-            modeStatusSpan.style.color = '#22C55E'; // Tailwind green-500
+        // --- Инициализация после аутентификации ---
+        const initApp = (user) => {
             currentUserId = user.uid;
             userIdSpan.textContent = currentUserId;
             
@@ -389,7 +361,7 @@
                 ensureTodaysEntry(logs);
             }, (error) => {
                 console.error("Ошибка получения данных: ", error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-400">Ошибка: Не удалось загрузить данные. Проверьте консоль.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-400">Ошибка: Не удалось загрузить данные. Проверьте права доступа в Firestore.</td></tr>`;
             });
         };
 
@@ -401,6 +373,23 @@
             if (e.target === modal) closeModal();
         });
 
+        signOutBtn.addEventListener('click', () => {
+            signOut(auth).catch(error => console.error('Sign out error', error));
+        });
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+            loginError.textContent = '';
+
+            signInWithEmailAndPassword(auth, email, password)
+                .catch(error => {
+                    console.error('Login error:', error.code);
+                    loginError.textContent = 'Ошибка: неверный E-mail или пароль.';
+                });
+        });
+
         logForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const logId = logIdInput.value;
@@ -410,37 +399,22 @@
                 status: logStatusInput.value,
             };
 
-            if (isLocalMode) {
+            try {
                 if (logId) { // Редактирование
-                    const index = localLogs.findIndex(log => log.id === logId);
-                    if (index > -1) localLogs[index].data = { ...localLogs[index].data, ...logData };
+                    const docRef = doc(db, logsCollectionRef.path, logId);
+                    const docSnap = await getDoc(docRef);
+                    const existingData = docSnap.exists() ? docSnap.data() : {};
+                    await setDoc(docRef, { ...existingData, ...logData });
                 } else { // Добавление
-                    const today = new Date();
-                    const formattedToday = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
-                    logData.date = formattedToday;
-                    logData.createdAt = new Date().toISOString();
-                    localLogs.push({ id: crypto.randomUUID(), data: logData });
+                     const today = new Date();
+                     const formattedToday = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
+                     logData.date = formattedToday;
+                     logData.createdAt = new Date();
+                     await addDoc(logsCollectionRef, logData);
                 }
-                saveLocalLogs();
-                renderLogs(localLogs);
-            } else { // Облачный режим
-                try {
-                    if (logId) { // Редактирование
-                        const docRef = doc(db, logsCollectionRef.path, logId);
-                        const docSnap = await getDoc(docRef);
-                        const existingData = docSnap.exists() ? docSnap.data() : {};
-                        await setDoc(docRef, { ...existingData, ...logData });
-                    } else { // Добавление
-                         const today = new Date();
-                         const formattedToday = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
-                         logData.date = formattedToday;
-                         logData.createdAt = new Date();
-                         await addDoc(logsCollectionRef, logData);
-                    }
-                } catch (error) {
-                    console.error("Ошибка сохранения записи: ", error);
-                    alert("Не удалось сохранить запись.");
-                }
+            } catch (error) {
+                console.error("Ошибка сохранения записи: ", error);
+                alert("Не удалось сохранить запись.");
             }
             closeModal();
         });
@@ -451,50 +425,35 @@
              if (!logId) return;
 
              if (target.classList.contains('edit-btn')) {
-                 if (isLocalMode) {
-                     const log = localLogs.find(l => l.id === logId);
-                     if (log) openModal(log);
-                 } else {
-                     const docRef = doc(db, logsCollectionRef.path, logId);
-                     const docSnap = await getDoc(docRef);
-                     if (docSnap.exists()) openModal({id: logId, data: docSnap.data()});
-                 }
+                 const docRef = doc(db, logsCollectionRef.path, logId);
+                 const docSnap = await getDoc(docRef);
+                 if (docSnap.exists()) openModal({id: logId, data: docSnap.data()});
              } else if (target.classList.contains('delete-btn')) {
                  if (confirm('Вы уверены, что хотите удалить эту запись?')) {
-                     if (isLocalMode) {
-                         localLogs = localLogs.filter(log => log.id !== logId);
-                         saveLocalLogs();
-                         renderLogs(localLogs);
-                     } else {
-                         try {
-                            await deleteDoc(doc(db, logsCollectionRef.path, logId));
-                         } catch(error) {
-                             console.error("Ошибка удаления записи: ", error);
-                             alert("Не удалось удалить запись.");
-                         }
+                     try {
+                        await deleteDoc(doc(db, logsCollectionRef.path, logId));
+                     } catch(error) {
+                         console.error("Ошибка удаления записи: ", error);
+                         alert("Не удалось удалить запись.");
                      }
                  }
              }
         });
 
         // --- Главный входной цикл: Аутентификация ---
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                initCloudMode(user);
+                // Пользователь вошел в систему
+                loginScreen.classList.add('hidden');
+                appScreen.classList.remove('hidden');
+                initApp(user);
             } else {
-                try {
-                    // Сначала пытаемся войти с токеном, если он есть
-                    const userCredential = initialAuthToken 
-                        ? await signInWithCustomToken(auth, initialAuthToken)
-                        // Если токена нет, пытаемся анонимно. Эта часть может вызвать ошибку на сервере
-                        // если домен не авторизован или конфиг неверный.
-                        : await signInAnonymously(auth);
-                    initCloudMode(userCredential.user);
-                } catch (error) {
-                    // ЕСЛИ АУТЕНТИФИКАЦИЯ НЕ УДАЛАСЬ, ПЕРЕКЛЮЧАЕМСЯ В ЛОКАЛЬНЫЙ РЕЖИМ
-                    console.warn("Authentication failed, switching to local mode. Error:", error.message);
-                    initLocalMode();
-                }
+                // Пользователь не вошел
+                if (unsubscribe) unsubscribe(); // Отписываемся от слушателя данных
+                appScreen.classList.add('hidden');
+                loginScreen.classList.remove('hidden');
+                tableBody.innerHTML = ''; // Очищаем таблицу
+                currentLogs = [];
             }
         });
 
