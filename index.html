@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автоматизированный Протокол Наблюдений v2.3</title>
+    <title>Автоматизированный Протокол Наблюдений v2.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Подключаем Chart.js для графиков -->
@@ -36,7 +36,6 @@
         .status-pending { background-color: #9A3412; color: #FFEDD5; }
         .status-observation { background-color: #1E40AF; color: #DBEAFE; }
 
-        /* ИСПРАВЛЕННЫЕ Стили для сворачиваемого дашборда */
         #dashboard-content {
             max-height: 0;
             overflow: hidden;
@@ -45,39 +44,45 @@
             padding-bottom: 0;
         }
         #dashboard-content.open {
-            max-height: 500px; /* Достаточно большое значение для контента */
+            max-height: 500px;
             padding-top: 1rem;
             padding-bottom: 1rem;
         }
 
-
-        /* Стили для иконки-шеврона */
         .chevron { transition: transform 0.4s ease-in-out; }
         .chevron.rotated { transform: rotate(180deg); }
         
-        /* Стилизация инпута даты через Flatpickr */
         .flatpickr-calendar {
-            background-color: #1F2937; /* bg-gray-800 */
-            border-color: #374151; /* border-gray-700 */
+            background-color: #1F2937;
+            border-color: #374151;
         }
         .flatpickr-day.selected {
-            background: #2563EB; /* bg-blue-600 */
+            background: #2563EB;
             border-color: #2563EB;
         }
         .flatpickr-day:hover {
-             background: #374151; /* bg-gray-700 */
+             background: #374151;
         }
         .flatpickr-time input.flatpickr-hour, .flatpickr-time input.flatpickr-minute {
             color: #E5E7EB;
         }
         span.flatpickr-weekday, .numInput, .numInputWrapper span {
-             color: #9CA3AF; /* text-gray-400 */
+             color: #9CA3AF;
         }
         .flatpickr-day {
-             color: #D1D5DB; /* text-gray-300 */
+             color: #D1D5DB;
         }
         .flatpickr-month, .flatpickr-current-month {
-             color: #F9FAFB; /* text-gray-50 */
+             color: #F9FAFB;
+        }
+        
+        /* Стили для режима "только чтение" */
+        .readonly #add-record-btn,
+        .readonly .edit-btn,
+        .readonly .delete-btn,
+        .readonly #report-btn,
+        .readonly #export-btn {
+            display: none;
         }
     </style>
 </head>
@@ -127,7 +132,7 @@
             <!-- Панель управления -->
             <div class="mb-4 flex flex-col gap-4 p-4 bg-gray-900 rounded-xl shadow-2xl">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="search" id="search-input" placeholder="Поиск по протоколу..." class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    <input type="search" id="search-input" placeholder="Поиск по протоколу или дате..." class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
                     <div id="status-filter-container" class="flex flex-wrap gap-2 items-center">
                         <span class="text-sm font-medium text-gray-400 mr-2">Статус:</span>
                     </div>
@@ -248,13 +253,14 @@
         const finalFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-logbook-app';
 
-        let allLogs = [], filteredLogs = [], currentUserId = null, logsCollectionRef, unsubscribe;
+        let allLogs = [], filteredLogs = [], logsCollectionRef, unsubscribe;
         let statusChart = null, activityChart = null;
 
         const app = initializeApp(finalFirebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        const appContainer = document.getElementById('app');
         const tableBody = document.getElementById('log-table-body');
         const userStatusText = document.getElementById('user-status-text');
         const exportBtn = document.getElementById('export-btn');
@@ -300,7 +306,7 @@
 
         const openModal = (log = null) => {
             logForm.reset();
-            logProtocolInput.value = ''; // Ensure textarea is cleared
+            logProtocolInput.value = '';
             if (log) {
                 modalTitle.textContent = 'Редактировать запись протокола';
                 logIdInput.value = log.id;
@@ -355,7 +361,12 @@
             const searchTerm = searchInput.value.toLowerCase();
             const activeStatus = document.querySelector('.status-filter-btn.bg-blue-600')?.dataset.status;
             const activeTag = document.querySelector('.tag-filter-btn.bg-blue-600')?.dataset.tag;
-            filteredLogs = allLogs.filter(log => (!searchTerm || log.data.protocol.toLowerCase().includes(searchTerm)) && (!activeStatus || log.data.status === activeStatus) && (!activeTag || (log.data.tags && log.data.tags.includes(activeTag))));
+            filteredLogs = allLogs.filter(log => {
+                const textMatch = !searchTerm || log.data.protocol.toLowerCase().includes(searchTerm) || log.data.date.includes(searchTerm);
+                const statusMatch = !activeStatus || log.data.status === activeStatus;
+                const tagMatch = !activeTag || (log.data.tags && log.data.tags.includes(activeTag));
+                return textMatch && statusMatch && tagMatch;
+            });
             renderLogs(filteredLogs);
         };
         
@@ -400,17 +411,32 @@
              reportWindow.document.close();
         };
 
-        const initApp = (user) => {
-            currentUserId = user.uid;
-            const collectionPath = `/artifacts/${appId}/users/${currentUserId}/logs`;
+        const initAppForUser = (user) => {
+            if (unsubscribe) unsubscribe(); 
+
+            const isAnonymous = user.isAnonymous;
+            const collectionPath = `/artifacts/${appId}/public/data/shared_logs`;
             logsCollectionRef = collection(db, collectionPath);
-            if (unsubscribe) unsubscribe();
+            
+            if (isAnonymous) {
+                userStatusText.textContent = `Режим: Анонимный (общий доступ)`;
+                loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                appContainer.classList.add('readonly');
+            } else {
+                userStatusText.textContent = `Вы вошли как: ${user.email} (общий доступ)`;
+                loginBtn.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
+                appContainer.classList.remove('readonly');
+            }
+
             unsubscribe = onSnapshot(query(logsCollectionRef), (snapshot) => {
                 allLogs = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
                 updateFilterControls(allLogs);
                 applyFiltersAndRender();
             }, (error) => {
                 console.error("Ошибка получения данных: ", error);
+                userStatusText.textContent = `Ошибка: Не удалось загрузить данные. Проверьте правила безопасности Firestore.`
                 tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-400">Ошибка: Не удалось загрузить данные.</td></tr>`;
             });
         };
@@ -484,18 +510,12 @@
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                if (user.isAnonymous) {
-                    userStatusText.textContent = `Режим: Анонимный. User ID: ${user.uid.substring(0,8)}...`;
-                    loginBtn.classList.remove('hidden');
-                    logoutBtn.classList.add('hidden');
-                } else {
-                    userStatusText.textContent = `Вы вошли как: ${user.email}`;
-                    loginBtn.classList.add('hidden');
-                    logoutBtn.classList.remove('hidden');
-                }
-                initApp(user);
+                initAppForUser(user);
             } else {
-                signInAnonymously(auth).catch(error => console.error("Anonymous sign in failed:", error));
+                signInAnonymously(auth).catch(error => {
+                    console.error("Anonymous sign in failed:", error);
+                    userStatusText.textContent = "Ошибка подключения к системе.";
+                });
             }
         });
     </script>
