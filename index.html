@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автоматизированный Протокол Наблюдений v2.6</title>
+    <title>Автоматизированный Протокол Наблюдений v2.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Подключаем Chart.js для графиков -->
@@ -419,12 +419,12 @@
             logsCollectionRef = collection(db, collectionPath);
             
             if (isAnonymous) {
-                userStatusText.textContent = `Режим: Анонимный (общий доступ)`;
+                userStatusText.textContent = `Режим: Анонимный (только чтение)`;
                 loginBtn.classList.remove('hidden');
                 logoutBtn.classList.add('hidden');
                 appContainer.classList.add('readonly');
             } else {
-                userStatusText.textContent = `Вы вошли как: ${user.email} (общий доступ)`;
+                userStatusText.textContent = `Вы вошли как: ${user.email} (полный доступ)`;
                 loginBtn.classList.add('hidden');
                 logoutBtn.classList.remove('hidden');
                 appContainer.classList.remove('readonly');
@@ -508,12 +508,22 @@
              }
         });
 
+        // ИСПРАВЛЕННАЯ ЛОГИКА ВЫХОДА
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                // Пользователь вошел (анонимно или с аккаунтом)
                 initAppForUser(user);
             } else {
+                // Пользователь вышел. Немедленно сбрасываем UI и входим анонимно.
+                if (unsubscribe) unsubscribe();
+                userStatusText.textContent = "Выход из системы...";
+                loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                appContainer.classList.add('readonly');
+                tableBody.innerHTML = ''; 
+
                 signInAnonymously(auth).catch(error => {
-                    console.error("Anonymous sign in failed:", error);
+                    console.error("Anonymous sign in failed after sign out:", error);
                     userStatusText.textContent = "Ошибка подключения к системе.";
                 });
             }
