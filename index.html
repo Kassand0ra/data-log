@@ -87,7 +87,7 @@
                     </div>
                     <div class="border-t border-gray-700 flex">
                          <button id="manage-account-btn" class="flex-1 text-center px-6 py-3 text-sm text-blue-400 hover:bg-gray-700/50 rounded-bl-lg">Управление</button>
-                         <a href="#" id="logout-btn" class="flex-1 text-center px-6 py-3 text-sm text-red-400 hover:bg-gray-700/50 rounded-br-lg border-l border-gray-700">Выход</a>
+                         <button id="logout-btn" class="flex-1 text-center px-6 py-3 text-sm text-red-400 hover:bg-gray-700/50 rounded-br-lg border-l border-gray-700">Выход</button>
                     </div>
                 </div>
             </div>
@@ -167,14 +167,23 @@
                         <input type="text" id="profile-displayName" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ваше имя или никнейм">
                     </div>
                     <div>
-                        <label for="profile-photoURL" class="block text-sm font-medium text-gray-300 mb-1">URL аватара</label>
-                        <input type="url" id="profile-photoURL" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="https://example.com/avatar.png">
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Аватар</label>
+                         <div id="avatar-preview-container" class="hidden my-4 flex justify-center">
+                            <img id="avatar-preview" src="" alt="Предпросмотр" class="w-24 h-24 rounded-full object-cover">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="url" id="profile-photoURL" class="flex-grow w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="URL аватара">
+                            <label for="avatar-upload-input" class="cursor-pointer bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex-shrink-0">
+                                Выбрать
+                            </label>
+                            <input type="file" id="avatar-upload-input" class="hidden" accept="image/*">
+                        </div>
                     </div>
                 </div>
                 <p id="profile-success" class="text-sm text-center text-green-400 h-4 mt-4"></p>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" id="profile-cancel-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Закрыть</button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Сохранить</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -183,6 +192,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
@@ -196,6 +206,7 @@
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const storage = getStorage(app);
 
         const loginBtn = document.getElementById('login-btn');
         const logoutBtn = document.getElementById('logout-btn');
@@ -219,11 +230,14 @@
         const profileForm = document.getElementById('profile-form');
         const profileCancelBtn = document.getElementById('profile-cancel-btn');
         const profileSuccess = document.getElementById('profile-success');
+        const avatarUploadInput = document.getElementById('avatar-upload-input');
+        const avatarPreviewContainer = document.getElementById('avatar-preview-container');
+        const avatarPreview = document.getElementById('avatar-preview');
 
         const getInitials = (nameOrEmail) => {
             if (!nameOrEmail) return '?';
             const name = nameOrEmail.includes('@') ? nameOrEmail.split('@')[0] : nameOrEmail;
-            const parts = name.split(/[._-]/);
+            const parts = name.split(/[.\-_]/);
             return parts.map(p => p[0]).slice(0, 2).join('').toUpperCase();
         };
 
@@ -245,6 +259,21 @@
                 profileInitials.classList.remove('hidden');
             }
         };
+        
+        const updateUserUI = (user) => {
+            if (user && !user.isAnonymous) {
+                loginBtn.classList.add('hidden');
+                userAvatarContainer.classList.remove('hidden');
+                updateUIAvatar(user);
+                profileName.textContent = user.displayName || 'Лаборант';
+                profileEmail.textContent = user.email;
+                profileId.textContent = user.uid.substring(0, 8).toUpperCase();
+            } else {
+                loginBtn.classList.remove('hidden');
+                userAvatarContainer.classList.add('hidden');
+                profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+            }
+        };
 
         const toggleDropdown = (dropdown) => {
             if (dropdown.classList.contains('hidden')) {
@@ -262,6 +291,14 @@
             profileForm['profile-displayName'].value = user.displayName || '';
             profileForm['profile-photoURL'].value = user.photoURL || '';
             profileSuccess.textContent = '';
+            
+            if (user.photoURL) {
+                avatarPreview.src = user.photoURL;
+                avatarPreviewContainer.classList.remove('hidden');
+            } else {
+                avatarPreviewContainer.classList.add('hidden');
+            }
+
             profileModal.classList.remove('hidden');
             setTimeout(() => {
                 profileModal.classList.remove('opacity-0');
@@ -278,13 +315,13 @@
         loginBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleDropdown(loginDropdown);
-            profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+            toggleDropdown(profileDropdown);
         });
         
         userAvatarContainer.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleDropdown(profileDropdown);
-            loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+            toggleDropdown(loginDropdown);
         });
 
         manageAccountBtn.addEventListener('click', () => {
@@ -305,6 +342,33 @@
             signInWithEmailAndPassword(auth, e.target.email.value, e.target.password.value)
                 .catch(err => { loginError.textContent = 'Ошибка входа. Проверьте данные.'; });
         });
+        
+        avatarUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file || !auth.currentUser) return;
+
+            const submitBtn = profileForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Загрузка...';
+
+            const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
+            
+            uploadBytes(storageRef, file)
+                .then(() => getDownloadURL(storageRef))
+                .then(url => {
+                    profileForm['profile-photoURL'].value = url;
+                    avatarPreview.src = url;
+                    avatarPreviewContainer.classList.remove('hidden');
+                    profileSuccess.textContent = 'Файл загружен. Нажмите "Сохранить".'
+                })
+                .catch(error => {
+                    profileSuccess.textContent = 'Ошибка загрузки файла.';
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Сохранить';
+                });
+        });
 
         profileForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -314,6 +378,7 @@
             updateProfile(auth.currentUser, { displayName, photoURL })
                 .then(() => {
                     profileSuccess.textContent = 'Профиль успешно обновлен!';
+                    updateUserUI(auth.currentUser); // Мгновенное обновление UI
                     setTimeout(() => closeProfileModal(), 1500);
                 })
                 .catch((error) => {
@@ -323,34 +388,25 @@
 
         document.addEventListener('click', (e) => {
             if (!loginDropdown.contains(e.target) && e.target !== loginBtn) {
-                loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+                toggleDropdown(loginDropdown);
             }
             if (!profileDropdown.contains(e.target) && e.target !== userAvatarContainer) {
-                profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+                toggleDropdown(profileDropdown);
             }
         });
 
         onAuthStateChanged(auth, (user) => {
-            if (user && !user.isAnonymous) {
-                // User is signed in
-                loginBtn.classList.add('hidden');
-                userAvatarContainer.classList.remove('hidden');
-                
-                updateUIAvatar(user);
-                profileName.textContent = user.displayName || 'Лаборант';
-                profileEmail.textContent = user.email;
-                profileId.textContent = user.uid.substring(0, 8).toUpperCase();
-                
-                loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
-            } else {
-                // User is anonymous or signed out
-                loginBtn.classList.remove('hidden');
-                userAvatarContainer.classList.add('hidden');
-                profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
-
-                if (!user) { // Only sign in anonymously if user is null (signed out)
-                    signInAnonymously(auth).catch(err => console.error("Anonymous sign in failed", err));
+            if (user) {
+                updateUserUI(user);
+                if (!user.isAnonymous) {
+                    logoutBtn.classList.remove('hidden');
+                    loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+                } else {
+                    logoutBtn.classList.add('hidden');
                 }
+            } else {
+                updateUserUI(null);
+                signInAnonymously(auth).catch(err => console.error("Anonymous sign in failed", err));
             }
         });
 
