@@ -195,14 +195,14 @@
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         const firebaseConfig = {
-  apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
-  authDomain: "data-load-691c7.firebaseapp.com",
-  projectId: "data-load-691c7",
-  storageBucket: "data-load-691c7.firebasestorage.app",
-  messagingSenderId: "365958727141",
-  appId: "1:365958727141:web:6ea3963dbe080cc9f55b0c",
-  measurementId: "G-FSLJDQ585Y"
-};
+            apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
+            authDomain: "data-load-691c7.firebaseapp.com",
+            projectId: "data-load-691c7",
+            storageBucket: "data-load-691c7.firebasestorage.app",
+            messagingSenderId: "365958727141",
+            appId: "1:365958727141:web:6ea3963dbe080cc9f55b0c",
+            measurementId: "G-FSLJDQ585Y"
+        };
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -388,7 +388,8 @@
             updateProfile(auth.currentUser, { displayName, photoURL })
                 .then(() => {
                     profileSuccess.textContent = 'Профиль успешно обновлен!';
-                    // onAuthStateChanged позаботится об обновлении UI
+                    // ИСПРАВЛЕНО: Принудительно обновляем UI не дожидаясь onAuthStateChanged
+                    updateUserUI(auth.currentUser);
                     setTimeout(() => closeProfileModal(), 1500);
                 })
                 .catch((error) => {
@@ -422,4 +423,5 @@
     </script>
 </body>
 </html>
+
 
