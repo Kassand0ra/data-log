@@ -378,7 +378,12 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Сервер ответил ошибкой: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(result => {
                 if (result.success) {
                     profileForm['profile-photoURL'].value = result.data.url;
@@ -386,12 +391,12 @@
                     avatarPreviewContainer.classList.remove('hidden');
                     profileSuccess.textContent = 'Файл загружен. Нажмите "Сохранить".';
                 } else {
-                    throw new Error(result.error.message || 'ImgBB API error');
+                    throw new Error(result.error ? result.error.message : 'Неизвестная ошибка ImgBB');
                 }
             })
             .catch(error => {
                 console.error("Upload Error:", error);
-                profileSuccess.textContent = 'Ошибка загрузки файла.';
+                profileSuccess.textContent = `Ошибка загрузки: ${error.message}`;
             })
             .finally(() => {
                 profileSaveBtn.disabled = false;
@@ -407,7 +412,6 @@
             updateProfile(auth.currentUser, { displayName, photoURL })
                 .then(() => {
                     profileSuccess.textContent = 'Профиль успешно обновлен!';
-                    // onAuthStateChanged позаботится об обновлении UI
                     setTimeout(() => closeProfileModal(), 1500);
                 })
                 .catch((error) => {
@@ -428,11 +432,9 @@
             if (user) {
                 updateUserUI(user);
                 if (!user.isAnonymous) {
-                    // Если пользователь вошел, закрываем окно входа
                     if(!loginDropdown.classList.contains('hidden')) toggleDropdown(loginDropdown);
                 }
             } else {
-                // Пользователь вышел, входим анонимно
                 updateUserUI(null);
                 signInAnonymously(auth).catch(err => console.error("Anonymous sign in failed", err));
             }
