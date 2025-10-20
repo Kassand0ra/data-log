@@ -183,7 +183,7 @@
                 <p id="profile-success" class="text-sm text-center text-green-400 h-4 mt-4"></p>
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" id="profile-cancel-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Закрыть</button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed">Сохранить</button>
+                    <button type="submit" id="profile-save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -192,7 +192,14 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // ===================================================================================
+        // =================  ВАЖНО! ШАГ ДЛЯ ЗАГРУЗКИ АВАТАРОВ  ===============================
+        // ===================================================================================
+        // 1. Перейдите на https://api.imgbb.com/ и получите свой бесплатный API ключ.
+        // 2. ВСТАВЬТЕ ВАШ КЛЮЧ В ПЕРЕМЕННУЮ `imgbbApiKey` НИЖЕ.
+        // ===================================================================================
+        const imgbbApiKey = "ВАШ_API_КЛЮЧ_ОТ_IMGBB"; // <-- ВСТАВЬТЕ СВОЙ КЛЮЧ СЮДА
 
         const firebaseConfig = {
             apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
@@ -206,7 +213,6 @@
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const storage = getStorage(app);
 
         const loginBtn = document.getElementById('login-btn');
         const logoutBtn = document.getElementById('logout-btn');
@@ -233,6 +239,7 @@
         const avatarUploadInput = document.getElementById('avatar-upload-input');
         const avatarPreviewContainer = document.getElementById('avatar-preview-container');
         const avatarPreview = document.getElementById('avatar-preview');
+        const profileSaveBtn = document.getElementById('profile-save-btn');
 
         const getInitials = (nameOrEmail) => {
             if (!nameOrEmail) return '?';
@@ -263,6 +270,7 @@
         const updateUserUI = (user) => {
             if (user && !user.isAnonymous) {
                 loginBtn.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
                 userAvatarContainer.classList.remove('hidden');
                 updateUIAvatar(user);
                 profileName.textContent = user.displayName || 'Лаборант';
@@ -270,8 +278,11 @@
                 profileId.textContent = user.uid.substring(0, 8).toUpperCase();
             } else {
                 loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
                 userAvatarContainer.classList.add('hidden');
-                profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+                if (!profileDropdown.classList.contains('hidden')) {
+                    toggleDropdown(profileDropdown);
+                }
             }
         };
 
@@ -314,14 +325,18 @@
 
         loginBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (!profileDropdown.classList.contains('hidden')) {
+                toggleDropdown(profileDropdown);
+            }
             toggleDropdown(loginDropdown);
-            toggleDropdown(profileDropdown);
         });
         
         userAvatarContainer.addEventListener('click', (e) => {
             e.stopPropagation();
+             if (!loginDropdown.classList.contains('hidden')) {
+                toggleDropdown(loginDropdown);
+            }
             toggleDropdown(profileDropdown);
-            toggleDropdown(loginDropdown);
         });
 
         manageAccountBtn.addEventListener('click', () => {
@@ -345,29 +360,42 @@
         
         avatarUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (!file || !auth.currentUser) return;
+            if (!file) return;
 
-            const submitBtn = profileForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Загрузка...';
+            if (imgbbApiKey === "06cb3112b48f64d7a2c4611bb04398ae") {
+                profileSuccess.textContent = 'Ошибка: не указан API ключ ImgBB.';
+                return;
+            }
 
-            const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
-            
-            uploadBytes(storageRef, file)
-                .then(() => getDownloadURL(storageRef))
-                .then(url => {
-                    profileForm['profile-photoURL'].value = url;
-                    avatarPreview.src = url;
+            profileSaveBtn.disabled = true;
+            profileSaveBtn.textContent = 'Загрузка...';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.data && result.data.url) {
+                    profileForm['profile-photoURL'].value = result.data.url;
+                    avatarPreview.src = result.data.url;
                     avatarPreviewContainer.classList.remove('hidden');
-                    profileSuccess.textContent = 'Файл загружен. Нажмите "Сохранить".'
-                })
-                .catch(error => {
-                    profileSuccess.textContent = 'Ошибка загрузки файла.';
-                })
-                .finally(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Сохранить';
-                });
+                    profileSuccess.textContent = 'Файл загружен. Нажмите "Сохранить".';
+                } else {
+                    throw new Error('ImgBB API error');
+                }
+            })
+            .catch(error => {
+                console.error("Upload Error:", error);
+                profileSuccess.textContent = 'Ошибка загрузки файла.';
+            })
+            .finally(() => {
+                profileSaveBtn.disabled = false;
+                profileSaveBtn.textContent = 'Сохранить';
+            });
         });
 
         profileForm.addEventListener('submit', (e) => {
@@ -378,7 +406,6 @@
             updateProfile(auth.currentUser, { displayName, photoURL })
                 .then(() => {
                     profileSuccess.textContent = 'Профиль успешно обновлен!';
-                    updateUserUI(auth.currentUser); // Мгновенное обновление UI
                     setTimeout(() => closeProfileModal(), 1500);
                 })
                 .catch((error) => {
@@ -388,10 +415,10 @@
 
         document.addEventListener('click', (e) => {
             if (!loginDropdown.contains(e.target) && e.target !== loginBtn) {
-                toggleDropdown(loginDropdown);
+                if(!loginDropdown.classList.contains('hidden')) toggleDropdown(loginDropdown);
             }
             if (!profileDropdown.contains(e.target) && e.target !== userAvatarContainer) {
-                toggleDropdown(profileDropdown);
+                 if(!profileDropdown.classList.contains('hidden')) toggleDropdown(profileDropdown);
             }
         });
 
@@ -399,12 +426,10 @@
             if (user) {
                 updateUserUI(user);
                 if (!user.isAnonymous) {
-                    logoutBtn.classList.remove('hidden');
-                    loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
-                } else {
-                    logoutBtn.classList.add('hidden');
+                    toggleDropdown(loginDropdown);
                 }
             } else {
+                // Пользователь вышел, входим анонимно
                 updateUserUI(null);
                 signInAnonymously(auth).catch(err => console.error("Anonymous sign in failed", err));
             }
