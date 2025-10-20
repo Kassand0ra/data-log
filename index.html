@@ -27,11 +27,63 @@
             transform: none;
             box-shadow: none;
         }
+        .dropdown {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
     </style>
 </head>
 <body class="antialiased">
 
     <div class="min-h-screen flex flex-col">
+        <!-- Шапка с аутентификацией -->
+        <header class="absolute top-0 right-0 p-6 z-50">
+            <div class="relative">
+                <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">
+                    Вход
+                </button>
+                <div id="user-avatar-container" class="hidden cursor-pointer w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 border-gray-600 hover:border-blue-500 transition-colors">
+                    <span id="user-initials"></span>
+                </div>
+
+                <!-- Контекстное меню входа -->
+                <div id="login-dropdown" class="dropdown absolute top-full right-0 mt-2 w-72 bg-gray-800 rounded-lg shadow-xl p-6 hidden opacity-0 transform scale-95 origin-top-right">
+                    <h3 class="text-lg font-semibold text-center text-white mb-4">Вход в систему</h3>
+                    <form id="login-form">
+                        <div class="space-y-4">
+                            <input id="email" type="email" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="E-mail">
+                            <input id="password" type="password" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Пароль">
+                        </div>
+                        <p id="login-error" class="text-sm text-center text-red-400 h-4 mt-2"></p>
+                        <div class="mt-4">
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Войти</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Карточка лаборанта -->
+                <div id="profile-dropdown" class="dropdown absolute top-full right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl hidden opacity-0 transform scale-95 origin-top-right">
+                    <div class="p-6">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center text-white font-bold text-2xl border-2 border-gray-600 flex-shrink-0">
+                                <span id="profile-initials"></span>
+                            </div>
+                            <div>
+                                <p id="profile-email" class="font-semibold text-white truncate"></p>
+                                <p class="text-sm text-gray-400">Лаборант</p>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-700 pt-4 space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-400">Личный номер:</span> <span id="profile-id" class="font-mono text-white"></span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">Допуск:</span> <span class="font-semibold text-green-400">Полный допуск</span></div>
+                        </div>
+                    </div>
+                    <div class="border-t border-gray-700 px-6 py-3 bg-gray-900/50 rounded-b-lg">
+                        <a href="#" id="logout-btn" class="block w-full text-left text-sm text-red-400 hover:text-red-300">Выход с аккаунта</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
         <!-- Основной контент -->
         <main class="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8">
             <div class="max-w-4xl w-full text-center">
@@ -50,7 +102,7 @@
                         <!-- Карточка проекта 1: Логбук -->
                         <a href="logbook.html" class="project-card block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
                             <div class="mb-4">
-                                <span class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Бета</span>
+                                <span class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Активен</span>
                             </div>
                             <h3 class="text-xl font-bold text-white mb-2">Модуль "ЛОГБУК"</h3>
                             <p class="text-gray-400 text-sm">
@@ -94,6 +146,105 @@
             </p>
         </footer>
     </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
+            authDomain: "data-load-691c7.firebaseapp.com",
+            projectId: "data-load-691c7",
+            storageBucket: "data-load-691c7.appspot.com",
+            messagingSenderId: "365958727141",
+            appId: "1:365958727141:web:cc1e0d05a061b6c0f55b0c",
+            measurementId: "G-5BB0FHGEH4"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loginDropdown = document.getElementById('login-dropdown');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        
+        const userAvatarContainer = document.getElementById('user-avatar-container');
+        const userInitials = document.getElementById('user-initials');
+        const profileDropdown = document.getElementById('profile-dropdown');
+        const profileInitials = document.getElementById('profile-initials');
+        const profileEmail = document.getElementById('profile-email');
+        const profileId = document.getElementById('profile-id');
+
+        const getInitials = (email) => {
+            if (!email) return '?';
+            const parts = email.split('@')[0].split(/[._-]/);
+            return parts.map(p => p[0]).slice(0, 2).join('').toUpperCase();
+        };
+
+        const toggleDropdown = (dropdown) => {
+            if (dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('hidden');
+                setTimeout(() => dropdown.classList.remove('opacity-0', 'scale-95'), 10);
+            } else {
+                dropdown.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => dropdown.classList.add('hidden'), 200);
+            }
+        };
+
+        loginBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleDropdown(loginDropdown);
+            profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+        });
+        
+        userAvatarContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleDropdown(profileDropdown);
+            loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginError.textContent = '';
+            signInWithEmailAndPassword(auth, e.target.email.value, e.target.password.value)
+                .catch(err => { loginError.textContent = 'Ошибка входа. Проверьте данные.'; });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!loginDropdown.contains(e.target) && e.target !== loginBtn) {
+                loginDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+            }
+            if (!profileDropdown.contains(e.target) && e.target !== userAvatarContainer) {
+                profileDropdown.classList.add('hidden', 'opacity-0', 'scale-95');
+            }
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            if (user && !user.isAnonymous) {
+                // User is signed in
+                loginBtn.classList.add('hidden');
+                userAvatarContainer.classList.remove('hidden');
+                const initials = getInitials(user.email);
+                userInitials.textContent = initials;
+                profileInitials.textContent = initials;
+                profileEmail.textContent = user.email;
+                profileId.textContent = user.uid.substring(0, 8).toUpperCase();
+                toggleDropdown(loginDropdown); // Закройте форму входа в систему, если она открыта
+            } else {
+                // Пользователь анонимен или вышел из системы
+                loginBtn.classList.remove('hidden');
+                userAvatarContainer.classList.add('hidden');
+                toggleDropdown(profileDropdown); // Закройте карту профиля, если она открыта
+            }
+        });
+
+    </script>
 </body>
 </html>
+
