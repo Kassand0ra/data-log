@@ -362,13 +362,14 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            if (imgbbApiKey === "06cb3112b48f64d7a2c4611bb04398ae") {
+            if (imgbbApiKey === "06cb3112b48f64d7a2c4611bb04398ae" || !imgbbApiKey) {
                 profileSuccess.textContent = 'Ошибка: не указан API ключ ImgBB.';
                 return;
             }
 
             profileSaveBtn.disabled = true;
             profileSaveBtn.textContent = 'Загрузка...';
+            profileSuccess.textContent = '';
 
             const formData = new FormData();
             formData.append('image', file);
@@ -379,13 +380,13 @@
             })
             .then(response => response.json())
             .then(result => {
-                if (result.data && result.data.url) {
+                if (result.success) {
                     profileForm['profile-photoURL'].value = result.data.url;
                     avatarPreview.src = result.data.url;
                     avatarPreviewContainer.classList.remove('hidden');
                     profileSuccess.textContent = 'Файл загружен. Нажмите "Сохранить".';
                 } else {
-                    throw new Error('ImgBB API error');
+                    throw new Error(result.error.message || 'ImgBB API error');
                 }
             })
             .catch(error => {
@@ -406,6 +407,7 @@
             updateProfile(auth.currentUser, { displayName, photoURL })
                 .then(() => {
                     profileSuccess.textContent = 'Профиль успешно обновлен!';
+                    // onAuthStateChanged позаботится об обновлении UI
                     setTimeout(() => closeProfileModal(), 1500);
                 })
                 .catch((error) => {
@@ -426,7 +428,8 @@
             if (user) {
                 updateUserUI(user);
                 if (!user.isAnonymous) {
-                    toggleDropdown(loginDropdown);
+                    // Если пользователь вошел, закрываем окно входа
+                    if(!loginDropdown.classList.contains('hidden')) toggleDropdown(loginDropdown);
                 }
             } else {
                 // Пользователь вышел, входим анонимно
