@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автоматизированный Протокол Наблюдений v2.9</title>
+    <title>Автоматизированный Протокол Наблюдений v3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Подключаем Chart.js для графиков -->
@@ -519,9 +519,16 @@
                     closeLoginDropdown();
                 }
             } else {
+                // ИСПРАВЛЕННАЯ ЛОГИКА: Пользователь вышел. Немедленно сбрасываем UI и входим анонимно.
                 if (unsubscribe) unsubscribe();
+                userStatusText.textContent = "Выход из системы...";
+                loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                appContainer.classList.add('readonly');
+                tableBody.innerHTML = ''; 
+
                 signInAnonymously(auth).catch(error => {
-                    console.error("Anonymous sign in failed:", error);
+                    console.error("Anonymous sign in failed after sign out:", error);
                     userStatusText.textContent = "Ошибка подключения к системе.";
                 });
             }
