@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Автоматизированный Протокол Наблюдений v3.0</title>
+    <title>Автоматизированный Протокол Наблюдений v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Подключаем Chart.js для графиков -->
@@ -100,7 +100,10 @@
                     </p>
                 </div>
                 <div class="relative flex gap-2">
-                    <button id="login-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
+                    <a href="index.html" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
+                        На главную
+                    </a>
+                    <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
                         Вход
                     </button>
                     <button id="logout-btn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out flex-shrink-0">
@@ -442,7 +445,7 @@
         modal.addEventListener('click', (e) => e.target === modal && closeModal());
         
         loginBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Предотвращаем закрытие по клику на саму кнопку
+            e.stopPropagation(); 
             openLoginDropdown();
         });
         logoutBtn.addEventListener('click', () => signOut(auth).catch(err => console.error(err)));
@@ -505,7 +508,6 @@
              }
         });
         
-        // Закрытие дропдауна по клику вне его
         document.addEventListener('click', (e) => {
             if (!loginDropdown.contains(e.target) && e.target !== loginBtn) {
                 closeLoginDropdown();
@@ -519,14 +521,14 @@
                     closeLoginDropdown();
                 }
             } else {
-                // ИСПРАВЛЕННАЯ ЛОГИКА: Пользователь вышел. Немедленно сбрасываем UI и входим анонимно.
                 if (unsubscribe) unsubscribe();
+                // ИСПРАВЛЕННАЯ ЛОГИКА ВЫХОДА
                 userStatusText.textContent = "Выход из системы...";
                 loginBtn.classList.remove('hidden');
                 logoutBtn.classList.add('hidden');
                 appContainer.classList.add('readonly');
-                tableBody.innerHTML = ''; 
-
+                tableBody.innerHTML = ''; // Сразу очищаем таблицу
+                // Сначала входим анонимно, потом onAuthStateChanged вызовется снова и вызовет initAppForUser
                 signInAnonymously(auth).catch(error => {
                     console.error("Anonymous sign in failed after sign out:", error);
                     userStatusText.textContent = "Ошибка подключения к системе.";
