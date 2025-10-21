@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проект "Phantom Dubbers"</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0A0F;
+            color: #E5E7EB;
+        }
+        .hero-bg {
+            background-image: linear-gradient(to top, rgba(11, 10, 15, 1) 0%, rgba(11, 10, 15, 0) 50%), url('https://placehold.co/1920x1080/1a1a1a/7f1d1d?text=Phantom+Dubbers');
+            background-size: cover;
+            background-position: center;
+        }
+        .card-bg {
+             background-size: cover;
+            background-position: center;
+            transition: transform 0.3s ease;
+        }
+        .card-bg:hover {
+            transform: scale(1.05);
+        }
+        .player-wrapper {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+        .player-wrapper video, .player-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        /* Кастомный скроллбар */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1F2937; }
+        ::-webkit-scrollbar-thumb { background: #4C1D95; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5B21B6; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Основной вид (список релизов) -->
+    <div id="main-view">
+        <!-- Шапка -->
+        <header class="absolute top-0 left-0 right-0 z-10 p-6 flex justify-between items-center">
+            <h1 class="text-2xl font-black uppercase tracking-widest text-white">Phantom <span class="text-purple-500">Dubbers</span></h1>
+            <a href="index.html" class="bg-gray-800/50 hover:bg-gray-700/70 backdrop-blur-sm text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">
+                Вернуться в хаб
+            </a>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero-bg h-screen flex items-end p-8 sm:p-12 lg:p-16">
+            <div class="max-w-2xl">
+                <span class="bg-purple-600 text-white text-sm font-semibold px-3 py-1 rounded-full mb-4 inline-block">Новый эпизод</span>
+                <h2 class="text-4xl sm:text-6xl font-black text-white leading-tight mb-4">Атака Титанов: Финальный сезон</h2>
+                <p class="text-gray-300 mb-6">
+                    Последняя битва за судьбу человечества разворачивается сейчас. Смотрите новый эпизод в нашей эксклюзивной озвучке.
+                </p>
+                <button class="watch-now-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform duration-200 hover:scale-105">
+                    Смотреть
+                </button>
+            </div>
+        </section>
+
+        <!-- Секция релизов -->
+        <section class="p-8 sm:p-12 lg:p-16">
+            <h3 class="text-2xl font-bold text-white mb-8">Текущие проекты</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                
+                <!-- Карточка аниме -->
+                <div class="anime-card cursor-pointer group" data-title="Магическая Битва">
+                    <div class="relative rounded-lg overflow-hidden aspect-w-2 aspect-h-3 shadow-lg">
+                        <div class="card-bg absolute inset-0" style="background-image: url('https://placehold.co/400x600/1a1a1a/7c3aed?text=Jujutsu+Kaisen');"></div>
+                        <div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                    </div>
+                    <h4 class="mt-4 font-semibold text-white truncate">Магическая Битва</h4>
+                    <p class="text-sm text-gray-400">24 эпизода</p>
+                </div>
+                
+                 <!-- Карточка аниме -->
+                <div class="anime-card cursor-pointer group" data-title="Человек-бензопила">
+                    <div class="relative rounded-lg overflow-hidden aspect-w-2 aspect-h-3 shadow-lg">
+                        <div class="card-bg absolute inset-0" style="background-image: url('https://placehold.co/400x600/1a1a1a/7c3aed?text=Chainsaw+Man');"></div>
+                         <div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                    </div>
+                    <h4 class="mt-4 font-semibold text-white truncate">Человек-бензопила</h4>
+                    <p class="text-sm text-gray-400">12 эпизодов</p>
+                </div>
+
+                <!-- ... добавьте больше карточек по аналогии -->
+                 <div class="anime-card cursor-pointer group" data-title="Киберпанк: Бегущие по краю">
+                    <div class="relative rounded-lg overflow-hidden aspect-w-2 aspect-h-3 shadow-lg">
+                        <div class="card-bg absolute inset-0" style="background-image: url('https://placehold.co/400x600/1a1a1a/7c3aed?text=Cyberpunk');"></div>
+                         <div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                    </div>
+                    <h4 class="mt-4 font-semibold text-white truncate">Киберпанк: Бегущие по краю</h4>
+                    <p class="text-sm text-gray-400">10 эпизодов</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Вид плеера (изначально скрыт) -->
+    <div id="player-view" class="hidden min-h-screen">
+        <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+             <header class="mb-6 flex justify-between items-center">
+                <h2 id="player-title" class="text-2xl sm:text-3xl font-bold text-white tracking-tight"></h2>
+                <button id="back-to-main" class="bg-gray-800/50 hover:bg-gray-700/70 backdrop-blur-sm text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out">
+                    &larr; Назад к релизам
+                </button>
+            </header>
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Плеер -->
+                <div class="flex-grow">
+                    <div id="video-player-container" class="player-wrapper bg-black rounded-lg shadow-2xl overflow-hidden">
+                        <!-- Сюда будет вставлен плеер -->
+                    </div>
+                </div>
+                <!-- Список эпизодов -->
+                <div class="w-full lg:w-80 lg:max-w-xs flex-shrink-0">
+                    <div class="bg-gray-900 rounded-lg p-4 h-full max-h-[70vh] overflow-y-auto">
+                         <h3 class="text-lg font-bold text-white mb-4">Эпизоды</h3>
+                         <div id="episode-list" class="space-y-2">
+                            <!-- Эпизоды будут добавлены сюда -->
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mainView = document.getElementById('main-view');
+        const playerView = document.getElementById('player-view');
+        const animeCards = document.querySelectorAll('.anime-card');
+        const watchNowBtn = document.querySelector('.watch-now-btn');
+        const backToMainBtn = document.getElementById('back-to-main');
+        const playerTitle = document.getElementById('player-title');
+        const videoPlayerContainer = document.getElementById('video-player-container');
+        const episodeList = document.getElementById('episode-list');
+
+        // ===================================================================================
+        // =================  ВАЖНО! МАКЕТНЫЕ ДАННЫЕ  =========================================
+        // ===================================================================================
+        // В реальном проекте эти данные будут приходить с вашего сервера.
+        // `sourceType` может быть 'youtube', 'direct', или 'server'
+        // `source` - это ID видео на YouTube или прямая ссылка на .mp4 файл
+        // ===================================================================================
+        const animeData = {
+            "Магическая Битва": [
+                { title: "Эпизод 1", sourceType: 'youtube', source: 't3S2Yh4A3A4' },
+                { title: "Эпизод 2", sourceType: 'direct', source: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
+            ],
+            "Человек-бензопила": [
+                 { title: "Эпизод 1", sourceType: 'youtube', source: 'l96zmB4S_kE' },
+            ],
+            "Киберпанк: Бегущие по краю": [
+                 { title: "Эпизод 1", sourceType: 'youtube', source: 'Jz8dt00oJZA' },
+            ],
+            "Атака Титанов: Финальный сезон": [
+                 { title: "Эпизод 1", sourceType: 'youtube', source: 'K8iS-c8_mGg' },
+            ]
+        };
+
+        const createPlayer = (type, source) => {
+            videoPlayerContainer.innerHTML = ''; // Очищаем контейнер
+            if (type === 'youtube') {
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${source}?autoplay=1&modestbranding=1&rel=0`;
+                iframe.frameBorder = '0';
+                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+                iframe.allowFullscreen = true;
+                videoPlayerContainer.appendChild(iframe);
+            } else { // 'direct' or 'server'
+                 const video = document.createElement('video');
+                 video.src = source;
+                 video.controls = true;
+                 video.autoplay = true;
+                 videoPlayerContainer.appendChild(video);
+            }
+        };
+
+        const openPlayer = (animeTitle) => {
+            const episodes = animeData[animeTitle] || [];
+            if (episodes.length === 0) {
+                alert('Для этого релиза еще не добавлены эпизоды.');
+                return;
+            }
+
+            playerTitle.textContent = animeTitle;
+            
+            // Заполняем список эпизодов
+            episodeList.innerHTML = '';
+            episodes.forEach((ep, index) => {
+                const epButton = document.createElement('button');
+                epButton.className = `w-full text-left p-3 rounded-md transition-colors ${index === 0 ? 'bg-purple-600 text-white' : 'hover:bg-gray-800'}`;
+                epButton.textContent = ep.title;
+                epButton.dataset.sourceType = ep.sourceType;
+                epButton.dataset.source = ep.source;
+                episodeList.appendChild(epButton);
+            });
+            
+            // Загружаем первый эпизод
+            createPlayer(episodes[0].sourceType, episodes[0].source);
+
+            // Переключаем вид
+            mainView.classList.add('hidden');
+            playerView.classList.remove('hidden');
+            window.scrollTo(0, 0);
+        };
+
+        // Обработчики событий
+        animeCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const title = card.dataset.title;
+                openPlayer(title);
+            });
+        });
+        
+        watchNowBtn.addEventListener('click', () => {
+            openPlayer("Атака Титанов: Финальный сезон");
+        });
+
+        backToMainBtn.addEventListener('click', () => {
+            playerView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            videoPlayerContainer.innerHTML = ''; // Останавливаем видео
+        });
+
+        episodeList.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                // Снимаем выделение со всех кнопок
+                episodeList.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('bg-purple-600', 'text-white');
+                    btn.classList.add('hover:bg-gray-800');
+                });
+                // Выделяем нажатую
+                e.target.classList.add('bg-purple-600', 'text-white');
+                e.target.classList.remove('hover:bg-gray-800');
+
+                const sourceType = e.target.dataset.sourceType;
+                const source = e.target.dataset.source;
+                createPlayer(sourceType, source);
+            }
+        });
+    </script>
+
+</body>
+</html>
+
