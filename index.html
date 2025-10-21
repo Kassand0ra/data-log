@@ -119,16 +119,16 @@
                             </p>
                         </a>
 
-                        <!-- Карточка проекта 2: В разработке -->
-                        <div class="project-card disabled block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
+                        <!-- ОБНОВЛЕНО: Карточка проекта 2: Phantom Dubbers -->
+                        <a href="phantom_dubbers.html" class="project-card block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
                              <div class="mb-4">
-                                <span class="bg-gray-700 text-gray-400 text-xs font-semibold px-3 py-1 rounded-full">В разработке</span>
+                                <span class="bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Активен</span>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-500 mb-2">Модуль "АНАЛИЗАТОР"</h3>
-                            <p class="text-gray-500 text-sm">
-                                Система глубокого анализа и визуализации собранных данных.
+                            <h3 class="text-xl font-bold text-white mb-2">Проект "Phantom Dubbers"</h3>
+                            <p class="text-gray-400 text-sm">
+                                Стриминговая платформа для даббинга и просмотра аниме.
                             </p>
-                        </div>
+                        </a>
                         
                         <!-- Карточка проекта 3: В разработке -->
                          <div class="project-card disabled block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
@@ -207,6 +207,8 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const storage = getStorage(app);
+
+        // ... (весь остальной JavaScript код остается без изменений) ...
 
         const loginBtn = document.getElementById('login-btn');
         const logoutBtn = document.getElementById('logout-btn');
@@ -388,7 +390,6 @@
             updateProfile(auth.currentUser, { displayName, photoURL })
                 .then(() => {
                     profileSuccess.textContent = 'Профиль успешно обновлен!';
-                    // ИСПРАВЛЕНО: Принудительно обновляем UI не дожидаясь onAuthStateChanged
                     updateUserUI(auth.currentUser);
                     setTimeout(() => closeProfileModal(), 1500);
                 })
@@ -410,11 +411,9 @@
             if (user) {
                 updateUserUI(user);
                 if (!user.isAnonymous) {
-                    // Если пользователь вошел, закрываем окно входа
                     if(!loginDropdown.classList.contains('hidden')) toggleDropdown(loginDropdown);
                 }
             } else {
-                // Пользователь вышел, входим анонимно
                 updateUserUI(null);
                 signInAnonymously(auth).catch(err => console.error("Anonymous sign in failed", err));
             }
@@ -423,5 +422,4 @@
     </script>
 </body>
 </html>
-
 
