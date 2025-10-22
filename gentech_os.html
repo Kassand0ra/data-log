@@ -12,7 +12,7 @@
             background-color: #030712; /* Very dark blue */
             color: #E5E7EB;
             overflow: hidden; /* Prevent scrollbars */
-            cursor: crosshair; /* Custom cursor */
+            cursor: default; /* Standard cursor */
         }
         .orbitron { font-family: 'Orbitron', sans-serif; }
         
@@ -86,11 +86,11 @@
             opacity: 1;
             transform: scale(1);
         }
-        /* Style for minimized state */
          .window.minimized {
-            opacity: 0;
-            transform: scale(0.8);
-            pointer-events: none; /* Make it unclickable when minimized */
+            opacity: 0 !important; /* Ensure it stays hidden */
+            transform: scale(0.8) !important;
+            pointer-events: none; 
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
          }
 
         .window-header {
@@ -106,24 +106,46 @@
         .window-controls button {
             background: none; border: none; color: #9ca3af; /* gray-400 */
             padding: 2px; margin-left: 4px; cursor: pointer;
-            width: 16px; /* Fixed width */
-            height: 16px; /* Fixed height */
+            width: 16px; 
+            height: 16px; 
              display: inline-flex;
              align-items: center;
              justify-content: center;
         }
         .window-controls button:hover { color: #e5e7eb; background-color: rgba(255,255,255,0.1); border-radius: 2px;} /* gray-200 */
-        .window-body { flex-grow: 1; padding: 1rem; overflow: auto; } /* Changed overflow-y to auto */
+        .window-body { flex-grow: 1; padding: 1rem; overflow: auto; } 
         
         /* Terminal styles */
-        #terminal-output { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.8rem; height: calc(100% - 25px); overflow-y: auto;}
-        #terminal-input-line { display: flex; align-items: center; margin-top: auto; padding-top: 5px; border-top: 1px solid rgba(75, 85, 99, 0.3);}
-        #terminal-input { background: transparent; border: none; outline: none; color: #E5E7EB; flex-grow: 1; font-family: monospace; font-size: 0.8rem; }
+        .terminal-output { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.8rem; height: calc(100% - 25px); overflow-y: auto;}
+        .terminal-input-line { display: flex; align-items: center; margin-top: auto; padding-top: 5px; border-top: 1px solid rgba(75, 85, 99, 0.3);}
+        .terminal-input { background: transparent; border: none; outline: none; color: #E5E7EB; flex-grow: 1; font-family: monospace; font-size: 0.8rem; }
         
         /* Settings Styles */
         .settings-sidebar button.active { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; /* blue-400 */ }
         .settings-sidebar button svg { width: 1.1rem; height: 1.1rem; margin-right: 0.5rem; }
         .settings-content h3 { border-bottom: 1px solid rgba(75, 85, 99, 0.5); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        
+        /* File Explorer Styles */
+        .file-explorer-sidebar { flex-basis: 150px; }
+        .file-explorer-item { display: flex; align-items: center; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .file-explorer-item:hover { background-color: rgba(255,255,255,0.1); }
+        .file-explorer-item svg { width: 1rem; height: 1rem; margin-right: 0.5rem; flex-shrink: 0; }
+        .file-explorer-content svg { width: 2rem; height: 2rem; margin-bottom: 0.25rem; }
+
+        /* Desktop Icon Styles */
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            width: 80px; /* Fixed width */
+        }
+        .desktop-icon:hover { background-color: rgba(255,255,255,0.1); }
+        .desktop-icon svg { width: 40px; height: 40px; margin-bottom: 4px; }
+        .desktop-icon span { font-size: 0.75rem; text-align: center; word-break: break-word; }
+
 
         /* Context Menu */
         #context-menu {
@@ -161,6 +183,29 @@
             background-color: rgba(55, 65, 81, 0.7); /* bg-gray-700 */
             color: #f9fafb; /* gray-50 */
         }
+        
+        /* System Notification */
+        #notification {
+             position: fixed;
+             bottom: 2rem;
+             right: 2rem;
+             background-color: rgba(31, 41, 55, 0.9);
+             backdrop-filter: blur(5px);
+             color: #e5e7eb;
+             padding: 0.75rem 1.25rem;
+             border-radius: 6px;
+             border: 1px solid rgba(75, 85, 99, 0.7);
+             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+             z-index: 1001;
+             opacity: 0;
+             transform: translateY(20px);
+             transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+             pointer-events: none;
+        }
+        #notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -171,7 +216,6 @@
             <svg class="w-24 h-24 text-cyan-400 mx-auto mb-6 animate-pulse" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 9a3 3 0 100 6 3 3 0 000-6zm-4.33 4.33a8 8 0 1111.314 0 8.003 8.003 0 01-11.314 0z" />
             </svg>
-            <!-- Only title has glitch effect -->
             <h1 class="orbitron text-4xl font-bold text-cyan-300 glitch-text mb-4" data-text="GenTech OS">GenTech OS</h1>
             <p id="loading-text" class="text-gray-400 mb-4">Инициализация ядра системы...</p>
             <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -199,17 +243,18 @@
          </nav>
 
          <!-- Main Desktop Area -->
-         <main id="desktop-area" class="flex-grow relative overflow-hidden">
-             <!-- Desktop Icons -->
-              <div class="absolute top-8 left-8 flex flex-col space-y-4 text-center text-xs text-gray-200">
-                  <div id="terminal-icon" class="flex flex-col items-center cursor-pointer hover:bg-white/10 p-2 rounded">
-                    <svg class="w-10 h-10 text-cyan-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+         <main id="desktop-area" class="flex-grow relative overflow-hidden p-8"> <!-- Added padding -->
+             <!-- Desktop Icons Container -->
+              <div id="desktop-icons" class="flex flex-wrap gap-4">
+                  <div id="terminal-icon" class="desktop-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <span>Terminal</span>
                   </div>
-                   <div id="settings-icon" class="flex flex-col items-center cursor-pointer hover:bg-white/10 p-2 rounded">
-                    <svg class="w-10 h-10 text-cyan-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                   <div id="settings-icon" class="desktop-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     <span>Settings</span>
                   </div>
+                   <!-- New folders will be added here -->
               </div>
               <!-- Windows will be appended here -->
          </main>
@@ -238,40 +283,45 @@
         <button data-action="sys-info">Информация о системе</button>
     </div>
 
+    <!-- System Notification -->
+    <div id="notification" class="">
+        <span id="notification-text"></span>
+    </div>
+
     <script>
         const loadingScreen = document.getElementById('loading-screen');
         const loadingText = document.getElementById('loading-text');
         const progressBar = document.getElementById('progress-bar');
         const desktop = document.getElementById('desktop');
         const desktopArea = document.getElementById('desktop-area');
+        const desktopIconsContainer = document.getElementById('desktop-icons');
         const clockElement = document.getElementById('clock');
         const dateElement = document.getElementById('date');
         const contextMenu = document.getElementById('context-menu');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
 
         // --- Window Management ---
         let openWindows = {};
         let highestZ = 10;
         let dragInfo = { dragging: false, window: null, offsetX: 0, offsetY: 0 };
-        
+        let folderCount = 0; // To name new folders
+
         function createWindow(id, title, content = '', width = 400, height = 300, x = 50, y = 50) {
             if (openWindows[id] && !openWindows[id].classList.contains('minimized')) {
                 bringToFront(openWindows[id]);
-                return openWindows[id]; // Return existing if not minimized
+                return openWindows[id];
             }
              if (openWindows[id] && openWindows[id].classList.contains('minimized')) {
-                 // Restore minimized window
-                 openWindows[id].classList.remove('minimized');
-                 bringToFront(openWindows[id]);
+                 restoreWindow(openWindows[id]);
                  return openWindows[id];
              }
-
 
             const win = document.createElement('div');
             win.id = id;
             win.className = 'window fixed';
             win.style.width = `${width}px`;
             win.style.height = `${height}px`;
-            // Randomize position slightly
             win.style.left = `${x + Math.random() * 50 - 25}px`;
             win.style.top = `${y + Math.random() * 50 - 25}px`;
             win.style.zIndex = ++highestZ;
@@ -331,7 +381,12 @@
         
         function minimizeWindow(win) {
              win.classList.add('minimized');
-             // Optionally: Add icon to taskbar later
+             // TODO: Add representation to taskbar/dock
+        }
+
+        function restoreWindow(win) {
+             win.classList.remove('minimized');
+             bringToFront(win);
         }
 
          function maximizeWindow(win) {
@@ -358,7 +413,7 @@
                 win.style.top = '0';
                 win.dataset.maximized = 'true';
             }
-            setTimeout(() => win.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out', 200); // Restore default transition
+            setTimeout(() => win.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out, resize 0s', 200); // Restore default transition
         }
 
 
@@ -385,8 +440,11 @@
 
             const desktopRect = desktopArea.getBoundingClientRect();
             const winRect = win.getBoundingClientRect();
-            newX = Math.max(0, Math.min(newX, desktopRect.width - winRect.width));
-            newY = Math.max(0, Math.min(newY, desktopRect.height - winRect.height));
+             // Prevent dragging fully out of view (leave a bit of the header visible)
+            const headerHeight = win.querySelector('.window-header').offsetHeight || 30;
+            newX = Math.max(-winRect.width + 50, Math.min(newX, desktopRect.width - 50));
+            newY = Math.max(0, Math.min(newY, desktopRect.height - headerHeight));
+
 
             win.style.left = `${newX}px`;
             win.style.top = `${newY}px`;
@@ -404,16 +462,16 @@
          // --- Terminal Simulation ---
         function createTerminalWindow() {
              const terminalContent = `
-                <div id="terminal-output" class="text-xs">Welcome to GenTech OS Terminal v0.1<br>Type 'help' for commands.<br><br></div>
-                <div id="terminal-input-line">
+                <div class="terminal-output">Welcome to GenTech OS Terminal v0.1<br>Type 'help' for commands.<br><br></div>
+                <div class="terminal-input-line">
                     <span class="text-cyan-400 mr-1">$</span>
-                    <input type="text" id="terminal-input" autocomplete="off">
+                    <input type="text" class="terminal-input" autocomplete="off">
                 </div>
             `;
             const termWindow = createWindow('terminal', 'Terminal', terminalContent, 500, 350, 100, 100);
             
-            const output = termWindow.querySelector('#terminal-output');
-            const input = termWindow.querySelector('#terminal-input');
+            const output = termWindow.querySelector('.terminal-output');
+            const input = termWindow.querySelector('.terminal-input');
             
             input.addEventListener('keydown', (e) => {
                  if (e.key === 'Enter') {
@@ -426,7 +484,8 @@
                      }
                  }
             });
-            input.focus(); 
+             // Focus input after window animation
+            setTimeout(() => input.focus(), 200);
         }
 
         function handleTerminalCommand(command, output, windowElement) {
@@ -454,6 +513,7 @@
                      const dir = args[1];
                      if (!dir || dir === "..") { currentDir = "/home"; output.innerHTML += `Changed directory to ${currentDir}\n`;} // Simplified
                      else if (dir === "Documents" || dir === "Downloads") {currentDir = `/home/user/${dir}`; output.innerHTML += `Changed directory to ${currentDir}\n`;}
+                      else if (dir === ".") { output.innerHTML += `Current directory: ${currentDir}\n`}
                      else { output.innerHTML += `cd: no such file or directory: ${dir}\n`; }
                      break;
                  case 'whoami':
@@ -468,7 +528,7 @@
 <span class="text-cyan-400">----</span>            ----------
 <span class="text-cyan-400">OS:</span> GenTech OS x86_64
 <span class="text-cyan-400">Kernel:</span> 6.X.Y-GEN
-<span class="text-cyan-400">Uptime:</span> 1 min (simulated)
+<span class="text-cyan-400">Uptime:</span> ${Math.floor((Date.now() - startTime)/1000)}s
 <span class="text-cyan-400">Shell:</span> gtsh 1.0
 <span class="text-cyan-400">Resolution:</span> ${window.innerWidth}x${window.innerHeight}
 <span class="text-cyan-400">DE:</span> GDE (GenTech Desktop Environment)
@@ -536,7 +596,7 @@
                          <div data-section-id="security" class="hidden">
                              <h3 class="text-lg font-bold text-cyan-400">Безопасность</h3>
                               <p class="text-gray-400">Брандмауэр: Активен</p>
-                              <p class="text-gray-400">Антивирус: GenTech Defenfer (Активен)</p>
+                              <p class="text-gray-400">Антивирус: GenTech Defender (Активен)</p>
                          </div>
                           <div data-section-id="updates" class="hidden">
                              <h3 class="text-lg font-bold text-cyan-400">Обновления</h3>
@@ -563,10 +623,182 @@
             });
          }
          
-         // --- Other Window Types ---
-         function createPlaceholderWindow(id, title) {
-             const content = `<p class="text-center text-gray-400 mt-8">Это окно "${title}". Функционал в разработке.</p>`;
-             createWindow(id, title, content, 350, 250, 200 + Math.random()*100, 200 + Math.random()*100);
+         // --- File Explorer Window ---
+         function createFileExplorerWindow(startPath = 'Desktop') {
+             const id = `file-explorer-${Date.now()}`; // Unique ID for multiple instances
+             const content = `
+                <div class="flex h-full text-sm">
+                    <div class="file-explorer-sidebar w-1/4 bg-gray-900/50 p-2 border-r border-gray-700/50 flex-shrink-0">
+                        <h4 class="font-bold mb-2 text-xs uppercase tracking-wider text-gray-400 px-2">Локации</h4>
+                        <ul class="space-y-1">
+                            <li><button class="file-explorer-item w-full text-left" data-path="Desktop">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                Рабочий стол
+                            </button></li>
+                            <li><button class="file-explorer-item w-full text-left" data-path="Documents">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                Документы
+                            </button></li>
+                             <li><button class="file-explorer-item w-full text-left" data-path="Downloads">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Загрузки
+                            </button></li>
+                        </ul>
+                    </div>
+                    <div class="file-explorer-main w-3/4 p-4 overflow-y-auto">
+                        <div class="current-path text-xs text-gray-400 mb-4">Путь: /${startPath}</div>
+                        <div class="file-explorer-content grid grid-cols-4 gap-4 text-center">
+                            <!-- File/Folder items will be added here -->
+                        </div>
+                    </div>
+                </div>
+             `;
+             const explorerWindow = createWindow(id, 'File Explorer', content, 650, 400, 200, 200);
+             
+             // Initial content loading
+             loadExplorerContent(explorerWindow, startPath);
+
+             // Sidebar navigation
+             const sidebarButtons = explorerWindow.querySelectorAll('.file-explorer-sidebar button');
+             sidebarButtons.forEach(button => {
+                 button.addEventListener('click', () => {
+                      loadExplorerContent(explorerWindow, button.dataset.path);
+                 });
+             });
+         }
+
+         function loadExplorerContent(windowElement, path) {
+             const contentArea = windowElement.querySelector('.file-explorer-content');
+             const pathDisplay = windowElement.querySelector('.current-path');
+             contentArea.innerHTML = ''; // Clear previous content
+             pathDisplay.textContent = `Путь: /${path}`;
+
+             // Mock content based on path
+             const items = getMockFilesystem(path);
+             items.forEach(item => {
+                 const itemElement = document.createElement('div');
+                 itemElement.className = 'flex flex-col items-center p-2 rounded hover:bg-white/10 cursor-pointer';
+                 itemElement.innerHTML = `
+                     ${item.type === 'folder' ? 
+                        `<svg class="text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>` :
+                        `<svg class="text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`
+                     }
+                     <span class="text-xs mt-1 truncate w-full">${item.name}</span>
+                 `;
+                 if (item.type === 'folder') {
+                     itemElement.addEventListener('dblclick', () => loadExplorerContent(windowElement, `${path}/${item.name}`));
+                 }
+                 contentArea.appendChild(itemElement);
+             });
+         }
+
+         function getMockFilesystem(path) {
+             // Super basic mock filesystem
+             if (path === 'Desktop') {
+                 // Add folders created via context menu
+                  const desktopFolders = Array.from(desktopIconsContainer.querySelectorAll('.folder-icon')).map(folder => ({ name: folder.querySelector('span').textContent, type: 'folder'}));
+                  return [
+                      {name: 'Terminal', type: 'app'}, // Represent existing icons maybe?
+                      {name: 'Settings', type: 'app'},
+                      ...desktopFolders
+                  ];
+             } else if (path === 'Documents') {
+                 return [{name: 'report.txt', type: 'file'}, {name: 'ProjectX/', type: 'folder'}];
+             } else if (path === 'Downloads') {
+                  return [{name: 'installer.exe', type: 'file'}, {name: 'archive.zip', type: 'file'}];
+             } else if (path.includes('/')) { // Subfolders
+                 return [{name: 'subfile.txt', type: 'file'}];
+             }
+             return [];
+         }
+         
+          // --- System Info Window ---
+         function createSystemInfoWindow() {
+             const uptime = Math.floor((Date.now() - startTime)/1000);
+             const sysInfoContent = `
+                <div class="text-xs font-mono whitespace-pre overflow-auto h-full">
+<span class="text-cyan-400"> GOS</span>            user@gentech
+<span class="text-cyan-400">----</span>            ----------
+<span class="text-cyan-400">OS:</span> GenTech OS x86_64
+<span class="text-cyan-400">Kernel:</span> 6.X.Y-GEN
+<span class="text-cyan-400">Uptime:</span> ${uptime}s
+<span class="text-cyan-400">Shell:</span> gtsh 1.0
+<span class="text-cyan-400">Resolution:</span> ${window.innerWidth}x${window.innerHeight}
+<span class="text-cyan-400">DE:</span> GDE (GenTech Desktop Environment)
+<span class="text-cyan-400">WM:</span> QuantumWM
+<span class="text-cyan-400">CPU:</span> Quantum Core (8 Cores) @ 5.0GHz [Simulated]
+<span class="text-cyan-400">GPU:</span> Photon Renderer 9000
+<span class="text-cyan-400">Memory:</span> 32GB DDRX [Simulated]
+                </div>
+             `;
+              createWindow('sys-info-window', 'System Info', sysInfoContent, 450, 300, 250, 250);
+         }
+         
+         // --- Create Desktop Folder ---
+         function createDesktopFolder(x, y) {
+             folderCount++;
+             const folderId = `folder-${folderCount}`;
+             const folderName = `Новая папка ${folderCount > 1 ? folderCount : ''}`.trim();
+
+             const folderElement = document.createElement('div');
+             folderElement.id = folderId;
+             folderElement.className = 'desktop-icon absolute folder-icon'; // Added absolute and specific class
+             folderElement.style.left = `${x - 40}px`; // Adjust click position to center icon roughly
+             folderElement.style.top = `${y - 40}px`;
+             folderElement.innerHTML = `
+                <svg class="text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                <span>${folderName}</span>
+             `;
+             
+             // Make folder draggable (simple version, only within desktop-area)
+              folderElement.draggable = true;
+              folderElement.addEventListener('dragstart', (e) => {
+                  e.dataTransfer.setData('text/plain', folderId);
+                   e.dataTransfer.effectAllowed = 'move';
+              });
+
+             folderElement.addEventListener('dblclick', () => {
+                 createFileExplorerWindow(`Desktop/${folderName}`);
+             });
+             
+             desktopIconsContainer.appendChild(folderElement); // Add to the specific container
+         }
+         
+         // Allow dropping folders onto the desktop area
+         desktopArea.addEventListener('dragover', (e) => {
+             e.preventDefault(); // Necessary to allow drop
+             e.dataTransfer.dropEffect = 'move';
+         });
+         desktopArea.addEventListener('drop', (e) => {
+             e.preventDefault();
+             const id = e.dataTransfer.getData('text/plain');
+             const draggedElement = document.getElementById(id);
+             if (draggedElement && draggedElement.classList.contains('folder-icon')) {
+                  const desktopRect = desktopArea.getBoundingClientRect();
+                 // Calculate position relative to the desktop area, accounting for padding
+                 let newX = e.clientX - desktopRect.left - (draggedElement.offsetWidth / 2);
+                 let newY = e.clientY - desktopRect.top - (draggedElement.offsetHeight / 2);
+                 
+                  // Keep within bounds roughly
+                  newX = Math.max(0, Math.min(newX, desktopRect.width - draggedElement.offsetWidth));
+                  newY = Math.max(0, Math.min(newY, desktopRect.height - draggedElement.offsetHeight));
+
+                 draggedElement.style.position = 'absolute'; // Ensure it's absolute if not already
+                 draggedElement.style.left = `${newX}px`;
+                 draggedElement.style.top = `${newY}px`;
+             }
+         });
+
+
+         // --- System Notification ---
+        let notificationTimeout;
+         function showNotification(message) {
+             clearTimeout(notificationTimeout);
+             notificationText.textContent = message;
+             notification.classList.add('show');
+             notificationTimeout = setTimeout(() => {
+                 notification.classList.remove('show');
+             }, 3000); // Hide after 3 seconds
          }
 
 
@@ -579,6 +811,7 @@
             { text: "Подготовка рабочего стола...", duration: 400, progress: 100 },
         ];
         let currentStep = 0;
+        let startTime = Date.now(); // For uptime calculation
         function runLoadingStep() {
             if (currentStep < loadingSteps.length) {
                 const step = loadingSteps[currentStep];
@@ -606,18 +839,14 @@
 
         // --- Context Menu ---
         function showContextMenu(e) {
-             e.preventDefault(); // Prevent default browser right-click menu
-             
-             // Hide if clicking on window or icon etc.
-            if (e.target.closest('.window') || e.target.closest('nav') || e.target.closest('footer') || e.target.closest('#desktop-area > div:not(.window)')) {
+             e.preventDefault(); 
+            if (e.target.closest('.window') || e.target.closest('nav') || e.target.closest('footer') || e.target.closest('.desktop-icon')) {
                  hideContextMenu();
                  return;
              }
-
             contextMenu.style.top = `${e.clientY}px`;
             contextMenu.style.left = `${e.clientX}px`;
             contextMenu.classList.remove('hidden');
-             // Trigger fade-in animation
              requestAnimationFrame(() => {
                  contextMenu.classList.add('visible');
              });
@@ -625,29 +854,40 @@
 
         function hideContextMenu() {
              contextMenu.classList.remove('visible');
-             // Wait for animation before hiding completely
              setTimeout(() => {
                 contextMenu.classList.add('hidden');
              }, 100);
         }
 
         // --- Event Listeners ---
-        document.getElementById('terminal-icon').addEventListener('click', createTerminalWindow);
-        document.getElementById('settings-icon').addEventListener('click', createSettingsWindow);
-        document.getElementById('dock-files').addEventListener('click', () => createPlaceholderWindow('file-explorer', 'File Explorer'));
+        document.getElementById('terminal-icon').addEventListener('dblclick', createTerminalWindow); // Changed to dblclick
+        document.getElementById('settings-icon').addEventListener('dblclick', createSettingsWindow);   // Changed to dblclick
+        document.getElementById('dock-files').addEventListener('click', () => createFileExplorerWindow());
         document.getElementById('dock-browser').addEventListener('click', () => createPlaceholderWindow('browser', 'Browser'));
         document.getElementById('dock-monitor').addEventListener('click', () => createPlaceholderWindow('system-monitor', 'System Monitor'));
         
-        // Context Menu Listeners
-        desktopArea.addEventListener('contextmenu', showContextMenu); // Use right-click
-        document.addEventListener('click', (e) => { // Hide on left-click anywhere else
+        desktopArea.addEventListener('contextmenu', showContextMenu); 
+        document.addEventListener('click', (e) => { 
             if (!contextMenu.contains(e.target)) {
                  hideContextMenu();
             }
         });
-        contextMenu.addEventListener('click', (e) => { // Handle actions
+        contextMenu.addEventListener('click', (e) => { 
             if(e.target.tagName === 'BUTTON') {
-                alert(`Action: ${e.target.dataset.action} (Not implemented)`);
+                const action = e.target.dataset.action;
+                if (action === 'new-folder') {
+                    // Get click position relative to desktopArea for folder placement
+                     const rect = desktopArea.getBoundingClientRect();
+                     const x = e.clientX - rect.left;
+                     const y = e.clientY - rect.top;
+                     createDesktopFolder(e.clientX, e.clientY); // Pass click coordinates
+                } else if (action === 'change-bg') {
+                     showNotification("Функция 'Сменить фон' в разработке.");
+                } else if (action === 'sys-info') {
+                     createSystemInfoWindow();
+                } else {
+                    alert(`Action: ${action} (Not implemented)`);
+                }
                 hideContextMenu();
             }
         });
