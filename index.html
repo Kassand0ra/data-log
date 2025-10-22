@@ -111,7 +111,7 @@
                         <!-- Карточка проекта 1: Логбук -->
                         <a href="logbook.html" class="project-card block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
                             <div class="mb-4">
-                                <span class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Бета</span>
+                                <span class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Активен</span>
                             </div>
                             <h3 class="text-xl font-bold text-white mb-2">Модуль "ЛОГБУК"</h3>
                             <p class="text-gray-400 text-sm">
@@ -119,10 +119,10 @@
                             </p>
                         </a>
 
-                        <!-- ОБНОВЛЕНО: Карточка проекта 2: Phantom Dubbers -->
+                        <!-- Карточка проекта 2: Phantom Dubbers -->
                         <a href="phantom_dubbers.html" class="project-card block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
                              <div class="mb-4">
-                                <span class="bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full">В разработке</span>
+                                <span class="bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Активен</span>
                             </div>
                             <h3 class="text-xl font-bold text-white mb-2">Проект "Phantom Dubbers"</h3>
                             <p class="text-gray-400 text-sm">
@@ -130,16 +130,16 @@
                             </p>
                         </a>
                         
-                        <!-- Карточка проекта 3: Макет -->
-                         <a href="gentech_os.html" class="project-card block block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
+                        <!-- ОБНОВЛЕНО: Карточка проекта 3: GenTech OS -->
+                         <a href="gentech_os.html" class="project-card block bg-gray-900 rounded-2xl shadow-lg p-6 text-left">
                              <div class="mb-4">
-                                <span class="bg-gray-700 text-gray-400 text-xs font-semibold px-3 py-1 rounded-full">Эксперимент</span>
+                                <span class="bg-cyan-600 text-white text-xs font-semibold px-3 py-1 rounded-full">Прототип</span>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-500 mb-2">Модуль "GenTech OS"</h3>
-                            <p class="text-gray-500 text-sm">
-                                Макет операционной системы.
+                            <h3 class="text-xl font-bold text-white mb-2">GenTech OS</h3>
+                            <p class="text-gray-400 text-sm">
+                                Симуляция футуристической операционной системы.
                             </p>
-                        </div>
+                        </a>
 
                     </div>
                 </section>
@@ -198,17 +198,17 @@
             apiKey: "AIzaSyA0vjmHF3sC4HB_6RSgsUesbEj4R2_kZR0",
             authDomain: "data-load-691c7.firebaseapp.com",
             projectId: "data-load-691c7",
-            storageBucket: "data-load-691c7.firebasestorage.app",
+            storageBucket: "data-load-691c7.firebasestorage.app", // Обновленный Bucket
             messagingSenderId: "365958727141",
-            appId: "1:365958727141:web:6ea3963dbe080cc9f55b0c",
-            measurementId: "G-FSLJDQ585Y"
+            appId: "1:365958727141:web:6ea3963dbe080cc9f55b0c", // Обновленный App ID (если менялся)
+            measurementId: "G-FSLJDQ585Y" // Обновленный Measurement ID (если менялся)
         };
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const storage = getStorage(app);
 
-        // ... (весь остальной JavaScript код остается без изменений) ...
+        // ... (остальной JavaScript код остается без изменений) ...
 
         const loginBtn = document.getElementById('login-btn');
         const logoutBtn = document.getElementById('logout-btn');
