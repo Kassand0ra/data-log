@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenTech OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; /* Very dark blue */
+            color: #E5E7EB;
+            overflow: hidden; /* Prevent scrollbars */
+            cursor: crosshair; /* Custom cursor */
+        }
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        .glitch {
+            position: relative; /* Needed for pseudo-elements */
+            animation: glitch 1.5s linear infinite;
+        }
+        @keyframes glitch {
+            2%, 64% { transform: translate(2px, 0) skew(0deg); }
+            4%, 60% { transform: translate(-2px, 0) skew(0deg); }
+            62% { transform: translate(0, 0) skew(5deg); }
+        }
+        .glitch::before, .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #030712;
+            overflow: hidden;
+            top: 0;
+        }
+        .glitch::before {
+            left: 2px;
+            text-shadow: -1px 0 #00FFFF; /* Cyan */
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+        .glitch::after {
+            left: -2px;
+            text-shadow: -1px 0 #FF00FF; /* Magenta */
+            clip: rect(85px, 450px, 90px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim { 0% { clip: rect(44px, 9999px, 56px, 0); transform: skew(0.3deg); } 100% { clip: rect(50px, 9999px, 75px, 0); transform: skew(0.1deg); } }
+        @keyframes glitch-anim2 { 0% { clip: rect(85px, 9999px, 90px, 0); transform: skew(0.2deg); } 100% { clip: rect(30px, 9999px, 45px, 0); transform: skew(0.4deg); } }
+
+        #desktop {
+            opacity: 0;
+            transition: opacity 1.5s ease-in;
+            background: linear-gradient(rgba(3, 7, 18, 0.9), rgba(3, 7, 18, 0.9)), url('https://placehold.co/1920x1080/0a0a0f/1f2937?text=GRID');
+            background-size: cover;
+        }
+        #desktop.loaded {
+            opacity: 1;
+        }
+        .taskbar {
+            backdrop-filter: blur(10px);
+            background-color: rgba(17, 24, 39, 0.7); /* bg-gray-900 with opacity */
+        }
+        /* Window styles */
+        .window {
+            position: absolute;
+            background-color: rgba(31, 41, 55, 0.85); /* bg-gray-800 with opacity */
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(75, 85, 99, 0.7); /* border-gray-600 */
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+            resize: both; /* Allow resizing */
+            min-width: 300px;
+            min-height: 200px;
+        }
+        .window.open {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .window-header {
+            background-color: rgba(17, 24, 39, 0.7); /* bg-gray-900 */
+            padding: 4px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            border-bottom: 1px solid rgba(75, 85, 99, 0.7);
+        }
+        .window-title { font-size: 0.75rem; font-weight: bold; color: #cbd5e1; }
+        .window-controls button {
+            background: none; border: none; color: #9ca3af; /* gray-400 */
+            padding: 2px; margin-left: 4px; cursor: pointer;
+        }
+        .window-controls button:hover { color: #e5e7eb; } /* gray-200 */
+        .window-body { flex-grow: 1; padding: 1rem; overflow-y: auto; }
+        /* Terminal styles */
+        #terminal-output { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.8rem; }
+        #terminal-input-line { display: flex; align-items: center; }
+        #terminal-input { background: transparent; border: none; outline: none; color: #E5E7EB; flex-grow: 1; font-family: monospace; font-size: 0.8rem; }
+        /* Context Menu */
+        #context-menu {
+            position: absolute;
+            background-color: rgba(31, 41, 55, 0.9); /* bg-gray-800 */
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(75, 85, 99, 0.7);
+            border-radius: 6px;
+            padding: 0.5rem 0;
+            min-width: 150px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            z-index: 1000;
+        }
+        #context-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            color: #d1d5db; /* gray-300 */
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        #context-menu button:hover {
+            background-color: rgba(55, 65, 81, 0.7); /* bg-gray-700 */
+            color: #f9fafb; /* gray-50 */
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center z-50 transition-opacity duration-1000 ease-out">
+        <div class="text-center">
+            <svg class="w-24 h-24 text-cyan-400 mx-auto mb-6 animate-pulse" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 9a3 3 0 100 6 3 3 0 000-6zm-4.33 4.33a8 8 0 1111.314 0 8.003 8.003 0 01-11.314 0z" />
+            </svg>
+            <h1 class="orbitron text-4xl font-bold text-cyan-300 glitch mb-4" data-text="GenTech OS">GenTech OS</h1>
+            <p id="loading-text" class="text-gray-400 mb-4">Инициализация ядра системы...</p>
+            <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-cyan-400 rounded-full transition-all duration-500 ease-linear" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Environment -->
+    <div id="desktop" class="h-screen w-screen flex flex-col">
+         <!-- Top Bar -->
+         <nav class="taskbar w-full px-4 py-1 flex justify-between items-center border-b border-gray-700/50 flex-shrink-0">
+             <div class="flex items-center space-x-2">
+                 <svg class="w-5 h-5 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M12 9a3 3 0 100 6 3 3 0 000-6zm-4.33 4.33a8 8 0 1111.314 0 8.003 8.003 0 01-11.314 0z" />
+                 </svg>
+                 <span class="orbitron text-sm font-bold text-gray-200">GOS</span>
+             </div>
+             <div class="flex items-center space-x-4">
+                 <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 3.636a1 1 0 011.414 0l.707.707a6 6 0 018.486 8.486l.707.707a1 1 0 11-1.414 1.414l-.707-.707a6 6 0 01-8.486-8.486l-.707-.707a1 1 0 010-1.414zm4.95 4.95a1 1 0 10-1.414 1.414l.707.707a1 1 0 001.414 0l.707-.707a1 1 0 000-1.414l-.707-.707zm4.95-4.95a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414 0l-.707-.707a1 1 0 010-1.414l.707-.707a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                 <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707a1 1 0 001.414 1.414L5 13.414V8a5 5 0 0110 0v5.414l.293.293a1 1 0 001.414-1.414L15 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
+                 <div id="clock" class="orbitron text-xs text-gray-300 font-mono">--:--:--</div>
+                 <div id="date" class="text-xs text-gray-400">--.--.----</div>
+             </div>
+         </nav>
+
+         <!-- Main Desktop Area -->
+         <main id="desktop-area" class="flex-grow relative overflow-hidden">
+             <!-- Desktop Icons -->
+              <div class="absolute top-8 left-8 flex flex-col space-y-4 text-center text-xs text-gray-200">
+                  <div id="terminal-icon" class="flex flex-col items-center cursor-pointer hover:bg-white/10 p-2 rounded">
+                    <svg class="w-10 h-10 text-cyan-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span>Terminal</span>
+                  </div>
+                   <div id="settings-icon" class="flex flex-col items-center cursor-pointer hover:bg-white/10 p-2 rounded">
+                    <svg class="w-10 h-10 text-cyan-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>Settings</span>
+                  </div>
+              </div>
+              <!-- Windows will be appended here -->
+         </main>
+
+         <!-- Dock/Taskbar -->
+         <footer class="taskbar w-full px-4 py-2 flex justify-center items-center border-t border-gray-700/50 flex-shrink-0">
+             <div class="flex space-x-4">
+                <button id="dock-files" class="p-2 hover:bg-white/10 rounded-md" title="File Explorer">
+                     <svg class="w-6 h-6 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                </button>
+                 <button id="dock-browser" class="p-2 hover:bg-white/10 rounded-md" title="Browser">
+                     <svg class="w-6 h-6 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                </button>
+                  <button id="dock-monitor" class="p-2 hover:bg-white/10 rounded-md" title="System Monitor">
+                     <svg class="w-6 h-6 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </button>
+             </div>
+         </footer>
+          <a href="index.html" class="absolute bottom-2 left-2 text-xs text-gray-500 hover:text-gray-300 transition-colors z-10">Вернуться в хаб</a>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="hidden">
+        <button data-action="new-folder">Новая папка</button>
+        <button data-action="change-bg">Сменить фон</button>
+        <button data-action="sys-info">Информация о системе</button>
+    </div>
+
+    <script>
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingText = document.getElementById('loading-text');
+        const progressBar = document.getElementById('progress-bar');
+        const desktop = document.getElementById('desktop');
+        const desktopArea = document.getElementById('desktop-area');
+        const clockElement = document.getElementById('clock');
+        const dateElement = document.getElementById('date');
+        const contextMenu = document.getElementById('context-menu');
+
+        // --- Window Management ---
+        let openWindows = {};
+        let highestZ = 10;
+        let dragInfo = { dragging: false, window: null, offsetX: 0, offsetY: 0 };
+        
+        function createWindow(id, title, content = '', width = 400, height = 300, x = 50, y = 50) {
+            if (openWindows[id]) {
+                bringToFront(openWindows[id]);
+                return; // Don't create if already open
+            }
+
+            const win = document.createElement('div');
+            win.id = id;
+            win.className = 'window fixed';
+            win.style.width = `${width}px`;
+            win.style.height = `${height}px`;
+            win.style.left = `${x}px`;
+            win.style.top = `${y}px`;
+            win.style.zIndex = ++highestZ;
+
+            win.innerHTML = `
+                <div class="window-header">
+                    <span class="window-title">${title}</span>
+                    <div class="window-controls">
+                        <button class="minimize-btn" title="Свернуть">_</button>
+                        <button class="maximize-btn" title="Развернуть">□</button>
+                        <button class="close-btn" title="Закрыть">X</button>
+                    </div>
+                </div>
+                <div class="window-body">${content}</div>
+            `;
+
+            desktopArea.appendChild(win);
+            openWindows[id] = win;
+            
+            // Make draggable
+            const header = win.querySelector('.window-header');
+            header.addEventListener('mousedown', startDrag);
+            win.addEventListener('mousedown', () => bringToFront(win)); // Bring to front on click anywhere
+
+            // Add controls functionality
+            win.querySelector('.close-btn').addEventListener('click', () => closeWindow(id));
+            win.querySelector('.maximize-btn').addEventListener('click', () => maximizeWindow(win));
+            win.querySelector('.minimize-btn').addEventListener('click', () => alert('Minimize function not implemented yet.')); // Placeholder
+
+             // Add resize observer for fun (optional, only logs size)
+             // const resizeObserver = new ResizeObserver(entries => {
+             //    for (let entry of entries) { console.log(`Window ${id} resized:`, entry.contentRect); }
+             // });
+             // resizeObserver.observe(win);
+
+
+            // Trigger open animation
+            requestAnimationFrame(() => { // Ensure element is in DOM before animating
+                win.classList.add('open');
+            });
+            
+             return win; // Return the window element for further manipulation (like terminal)
+        }
+
+        function closeWindow(id) {
+            const win = openWindows[id];
+            if (win) {
+                win.classList.remove('open');
+                setTimeout(() => {
+                    win.remove();
+                    delete openWindows[id];
+                }, 200); // Wait for fade out
+            }
+        }
+        
+        function bringToFront(win) {
+             if (parseInt(win.style.zIndex) < highestZ) {
+                 win.style.zIndex = ++highestZ;
+             }
+        }
+
+         function maximizeWindow(win) {
+            if (win.dataset.maximized === 'true') {
+                // Restore
+                win.style.width = win.dataset.oldWidth || '400px';
+                win.style.height = win.dataset.oldHeight || '300px';
+                win.style.left = win.dataset.oldLeft || '50px';
+                win.style.top = win.dataset.oldTop || '50px';
+                win.style.transition = 'width 0.2s, height 0.2s, left 0.2s, top 0.2s';
+                win.dataset.maximized = 'false';
+                 win.style.resize = 'both';
+            } else {
+                // Maximize
+                win.dataset.oldWidth = win.style.width;
+                win.dataset.oldHeight = win.style.height;
+                win.dataset.oldLeft = win.style.left;
+                win.dataset.oldTop = win.style.top;
+                 win.style.resize = 'none'; // Disable resize when maximized
+
+                win.style.transition = 'width 0.2s, height 0.2s, left 0.2s, top 0.2s';
+                win.style.width = '100%';
+                win.style.height = '100%';
+                win.style.left = '0';
+                win.style.top = '0';
+                win.dataset.maximized = 'true';
+            }
+             // Remove transition after animation
+            setTimeout(() => win.style.transition = '', 200);
+        }
+
+
+        function startDrag(e) {
+            const win = e.target.closest('.window');
+            if (!win || win.dataset.maximized === 'true') return; // Don't drag maximized windows
+            
+            bringToFront(win);
+            dragInfo.dragging = true;
+            dragInfo.window = win;
+            const rect = win.getBoundingClientRect();
+            dragInfo.offsetX = e.clientX - rect.left;
+            dragInfo.offsetY = e.clientY - rect.top;
+            document.addEventListener('mousemove', dragWindow);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault(); // Prevent text selection
+        }
+
+        function dragWindow(e) {
+            if (!dragInfo.dragging) return;
+            const win = dragInfo.window;
+            let newX = e.clientX - dragInfo.offsetX;
+            let newY = e.clientY - dragInfo.offsetY;
+
+            // Constrain to viewport (consider desktopArea bounds)
+            const desktopRect = desktopArea.getBoundingClientRect();
+            const winRect = win.getBoundingClientRect();
+            newX = Math.max(0, Math.min(newX, desktopRect.width - winRect.width));
+            newY = Math.max(0, Math.min(newY, desktopRect.height - winRect.height));
+
+
+            win.style.left = `${newX}px`;
+            win.style.top = `${newY}px`;
+        }
+
+        function stopDrag() {
+            if (dragInfo.dragging) {
+                dragInfo.dragging = false;
+                document.removeEventListener('mousemove', dragWindow);
+                document.removeEventListener('mouseup', stopDrag);
+                dragInfo.window = null;
+            }
+        }
+        
+         // --- Terminal Simulation ---
+        function createTerminalWindow() {
+             const terminalContent = `
+                <div id="terminal-output" class="text-xs h-full overflow-y-auto pr-2">Welcome to GenTech OS Terminal v0.1<br>Type 'help' for commands.<br><br></div>
+                <div id="terminal-input-line" class="mt-auto pt-1 border-t border-gray-700/50">
+                    <span class="text-cyan-400 mr-1">$</span>
+                    <input type="text" id="terminal-input" autocomplete="off">
+                </div>
+            `;
+            const termWindow = createWindow('terminal', 'Terminal', terminalContent, 500, 350, 100, 100);
+            
+            const output = termWindow.querySelector('#terminal-output');
+            const input = termWindow.querySelector('#terminal-input');
+            
+            input.addEventListener('keydown', (e) => {
+                 if (e.key === 'Enter') {
+                     const command = input.value.trim();
+                     if (command) {
+                         output.innerHTML += `<span class="text-cyan-400">$</span> ${command}\n`;
+                         handleTerminalCommand(command, output);
+                         input.value = '';
+                         output.scrollTop = output.scrollHeight; // Scroll to bottom
+                     }
+                 }
+            });
+            input.focus(); // Focus input when window opens
+        }
+
+        function handleTerminalCommand(command, output) {
+             const args = command.split(' ');
+             const cmd = args[0].toLowerCase();
+             
+             switch(cmd) {
+                 case 'help':
+                     output.innerHTML += `Available commands:\n  help - Show this message\n  clear - Clear the screen\n  date - Show current date and time\n  echo [text] - Print text\n  neofetch - Display system info (mock)\n`;
+                     break;
+                case 'clear':
+                     output.innerHTML = '';
+                     break;
+                 case 'date':
+                     output.innerHTML += `${new Date().toLocaleString()}\n`;
+                     break;
+                 case 'echo':
+                     output.innerHTML += `${args.slice(1).join(' ')}\n`;
+                     break;
+                  case 'neofetch':
+                     output.innerHTML += `
+<span class="text-cyan-400"> GOS</span>            user@gentech
+<span class="text-cyan-400">----</span>            ----------
+<span class="text-cyan-400">OS:</span> GenTech OS x86_64
+<span class="text-cyan-400">Kernel:</span> 6.X.Y-GEN
+<span class="text-cyan-400">Uptime:</span> 1 min (simulated)
+<span class="text-cyan-400">Shell:</span> gtsh 1.0
+<span class="text-cyan-400">Resolution:</span> ${window.innerWidth}x${window.innerHeight}
+<span class="text-cyan-400">DE:</span> GDE (GenTech Desktop Environment)
+<span class="text-cyan-400">WM:</span> QuantumWM
+<span class="text-cyan-400">CPU:</span> Quantum Core (8 Cores) @ 5.0GHz [Simulated]
+<span class="text-cyan-400">GPU:</span> Photon Renderer 9000
+<span class="text-cyan-400">Memory:</span> 32GB DDRX [Simulated]
+
+`;
+                     break;
+                 default:
+                     output.innerHTML += `Command not found: ${cmd}\n`;
+             }
+        }
+        
+         // --- Settings Window ---
+         function createSettingsWindow() {
+              const settingsContent = `
+                <div class="flex h-full">
+                    <div class="w-1/4 bg-gray-900/50 p-4 border-r border-gray-700/50">
+                        <h4 class="font-bold mb-4 text-sm text-gray-300">Категории</h4>
+                        <ul class="space-y-2 text-xs">
+                            <li><button class="w-full text-left text-cyan-400">Система</button></li>
+                            <li><button class="w-full text-left hover:text-cyan-400">Дисплей</button></li>
+                            <li><button class="w-full text-left hover:text-cyan-400">Сеть</button></li>
+                            <li><button class="w-full text-left hover:text-cyan-400">Безопасность</button></li>
+                            <li><button class="w-full text-left hover:text-cyan-400">Обновления</button></li>
+                        </ul>
+                    </div>
+                    <div class="w-3/4 p-6">
+                        <h3 class="text-lg font-bold text-cyan-400 mb-4">Система (Placeholder)</h3>
+                        <p class="text-sm text-gray-400">Здесь будут отображаться настройки выбранной категории.</p>
+                        <!-- Placeholder content -->
+                    </div>
+                </div>
+            `;
+            createWindow('settings', 'Settings', settingsContent, 600, 400, 150, 150);
+         }
+         
+         // --- Other Window Types ---
+         function createPlaceholderWindow(id, title) {
+             const content = `<p class="text-center text-gray-400 mt-8">Это окно "${title}". Функционал в разработке.</p>`;
+             createWindow(id, title, content, 350, 250, 200 + Math.random()*100, 200 + Math.random()*100);
+         }
+
+
+        // --- Loading Simulation ---
+        const loadingSteps = [
+            { text: "Загрузка модулей ядра...", duration: 800, progress: 20 },
+            { text: "Инициализация подсистем безопасности...", duration: 1200, progress: 45 },
+            { text: "Проверка целостности данных...", duration: 600, progress: 60 },
+            { text: "Запуск графической оболочки...", duration: 1000, progress: 85 },
+            { text: "Подготовка рабочего стола...", duration: 400, progress: 100 },
+        ];
+        let currentStep = 0;
+        function runLoadingStep() {
+            if (currentStep < loadingSteps.length) {
+                const step = loadingSteps[currentStep];
+                loadingText.textContent = step.text;
+                progressBar.style.width = `${step.progress}%`;
+                currentStep++;
+                setTimeout(runLoadingStep, step.duration);
+            } else {
+                setTimeout(() => {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                        desktop.classList.add('loaded');
+                    }, 1000);
+                }, 500);
+            }
+        }
+
+        // --- Clock Update ---
+        function updateClock() {
+            const now = new Date();
+            clockElement.textContent = now.toLocaleTimeString('ru-RU');
+            dateElement.textContent = now.toLocaleDateString('ru-RU');
+        }
+
+        // --- Context Menu ---
+        function showContextMenu(e) {
+             e.preventDefault(); // Prevent default browser right-click menu (useful for testing)
+            // For LMB, we don't prevent default unless clicking an icon or window
+            
+             // Hide if clicking on window or icon
+            if (e.target.closest('.window') || e.target.closest('nav') || e.target.closest('footer') || e.target.closest('#desktop-area > div')) {
+                 hideContextMenu();
+                 return;
+             }
+
+            contextMenu.style.top = `${e.clientY}px`;
+            contextMenu.style.left = `${e.clientX}px`;
+            contextMenu.classList.remove('hidden');
+        }
+
+        function hideContextMenu() {
+            contextMenu.classList.add('hidden');
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('terminal-icon').addEventListener('click', createTerminalWindow);
+        document.getElementById('settings-icon').addEventListener('click', createSettingsWindow);
+        document.getElementById('dock-files').addEventListener('click', () => createPlaceholderWindow('file-explorer', 'File Explorer'));
+        document.getElementById('dock-browser').addEventListener('click', () => createPlaceholderWindow('browser', 'Browser'));
+        document.getElementById('dock-monitor').addEventListener('click', () => createPlaceholderWindow('system-monitor', 'System Monitor'));
+        
+        // Context Menu Listeners
+        desktopArea.addEventListener('click', showContextMenu); // Changed from 'contextmenu' to 'click' for LMB
+        document.addEventListener('click', (e) => {
+            // Hide if clicked outside the context menu itself
+            if (!contextMenu.contains(e.target)) {
+                 hideContextMenu();
+            }
+        });
+        contextMenu.addEventListener('click', (e) => {
+            if(e.target.tagName === 'BUTTON') {
+                alert(`Action: ${e.target.dataset.action} (Not implemented)`);
+                hideContextMenu();
+            }
+        });
+
+
+        // --- Initialization ---
+        runLoadingStep();
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
+
